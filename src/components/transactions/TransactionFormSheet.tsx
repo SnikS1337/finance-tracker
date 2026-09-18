@@ -15,6 +15,7 @@ interface Props {
   /** Present when editing an existing transaction. */
   transaction?: Transaction | null;
   initialType?: TransactionType;
+  mode?: "quick" | "full";
   onSubmit: (input: NewTransactionInput) => void;
   onDelete?: (id: string) => void;
 }
@@ -34,6 +35,7 @@ export function TransactionFormSheet({
   onDelete,
 }: Props) {
   const isEditing = !!transaction;
+  const isQuickAdd = mode === "quick" && !isEditing;
   const [type, setType] = useState<TransactionType>(initialType);
   const [amountRaw, setAmountRaw] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
@@ -80,16 +82,18 @@ export function TransactionFormSheet({
     onOpenChange(false);
   }
 
-  const sheetTitle = isEditing
-    ? t.transactionForm.editTitle
-    : type === "income"
-      ? t.transactionForm.addIncomeTitle
-      : t.transactionForm.addExpenseTitle;
+  const sheetTitle = isQuickAdd
+    ? t.quickAdd.title
+    : isEditing
+      ? t.transactionForm.editTitle
+      : type === "income"
+        ? t.transactionForm.addIncomeTitle
+        : t.transactionForm.addExpenseTitle;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={sheetTitle}>
       <div className="space-y-5">
-        {!isEditing && (
+        {!isEditing && !isQuickAdd && (
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800">
             {(["expense", "income"] as TransactionType[]).map((typeOption) => (
               <button
@@ -114,7 +118,7 @@ export function TransactionFormSheet({
 
         <div>
           <label htmlFor="amount" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {t.transactionForm.amountLabel}
+            {isQuickAdd ? t.quickAdd.amountLabel : t.transactionForm.amountLabel}
           </label>
           <div className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-3 focus-within:border-neutral-900 dark:border-neutral-800 dark:focus-within:border-white">
             <input
@@ -139,12 +143,12 @@ export function TransactionFormSheet({
 
         <div>
           <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {t.transactionForm.categoryLabel}
+            {isQuickAdd ? t.quickAdd.categoryLabel : t.transactionForm.categoryLabel}
           </span>
           <CategoryPicker categories={categoriesForType} selectedId={categoryId} onSelect={setCategoryId} />
         </div>
 
-        <div>
+        {!isQuickAdd && <div>
           <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
             {t.transactionForm.dateLabel}
           </label>
@@ -156,7 +160,7 @@ export function TransactionFormSheet({
             onChange={(e) => setDate(e.target.value)}
             className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
           />
-        </div>
+        </div>}
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
@@ -174,11 +178,15 @@ export function TransactionFormSheet({
             </Button>
           )}
           <Button type="button" onClick={handleSubmit} className="flex-1">
-            {isEditing
-              ? t.transactionForm.saveChanges
-              : type === "income"
-                ? t.transactionForm.addIncomeCta
-                : t.transactionForm.addExpenseCta}
+            {isQuickAdd
+              ? type === "income"
+                ? t.quickAdd.addIncome
+                : t.quickAdd.addExpense
+              : isEditing
+                ? t.transactionForm.saveChanges
+                : type === "income"
+                  ? t.transactionForm.addIncomeCta
+                  : t.transactionForm.addExpenseCta}
           </Button>
         </div>
       </div>
