@@ -1,42 +1,76 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { ToastContext, type ToastItem } from "./toastStore";
 
-// Matches the "toast-out" animation duration in tailwind.config.js — the toast
-// stays mounted (playing its exit animation) for exactly this long before it's
-// actually removed from state, so the departure is seen rather than snapped.
+// Matches the "toast-out" animation duration in tailwind.config.js.
 const EXIT_ANIMATION_MS = 220;
+const AUTO_DISMISS_MS = 4500;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
   const timers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const removeTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const dismiss = useCallback((id: string) => {
-    const autoTimer = timers.current.get(id);
-    if (autoTimer) clearTimeout(autoTimer);
+  const clearTimer = useCallback((id: string) => {
+    const timer = timers.current.get(id);
+    if (timer) clearTimeout(timer);
     timers.current.delete(id);
 
-    setLeavingIds((prev) => new Set(prev).add(id));
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-      setLeavingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }, EXIT_ANIMATION_MS);
+    const removeTimer = removeTimers.current.get(id);
+    if (removeTimer) clearTimeout(removeTimer);
+    removeTimers.current.delete(id);
   }, []);
+
+  const dismiss = useCallback(
+    (id: string) => {
+      clearTimer(id);
+
+      setLeavingIds((prev) => {
+        if (prev.has(id)) return prev;
+        return new Set(prev).add(id);
+      });
+
+      const removeTimer = setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+        setLeavingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        removeTimers.current.delete(id);
+      }, EXIT_ANIMATION_MS);
+
+      removeTimers.current.set(id, removeTimer);
+    },
+    [clearTimer]
+  );
 
   const showToast = useCallback(
     (toast: Omit<ToastItem, "id">) => {
+      // Keep a single toast visible. This prevents rapid actions such as
+      // repeated swipe-to-delete from filling the screen with identical toasts.
+      timers.current.forEach((timer) => clearTimeout(timer));
+      timers.current.clear();
+      removeTimers.current.forEach((timer) => clearTimeout(timer));
+      removeTimers.current.clear();
+
       const id = crypto.randomUUID();
-      setToasts((prev) => [...prev, { ...toast, id }]);
-      const timer = setTimeout(() => dismiss(id), 4500);
+      setLeavingIds(new Set());
+      setToasts([{ ...toast, id }]);
+
+      const timer = setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
       timers.current.set(id, timer);
     },
     [dismiss]
   );
+
+  useEffect(() => {
+    return () => {
+      timers.current.forEach((timer) => clearTimeout(timer));
+      removeTimers.current.forEach((timer) => clearTimeout(timer));
+    };
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
