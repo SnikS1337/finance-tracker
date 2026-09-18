@@ -44,11 +44,9 @@ function ChartTooltip({ active, payload, label }: any) {
 
 function ChartCanvas({
   data,
-  tooltipDisabled,
   axisMax,
 }: {
   data: ChartPoint[];
-  tooltipDisabled: boolean;
   axisMax: number;
 }) {
   return (
@@ -78,7 +76,6 @@ function ChartCanvas({
           width={72}
         />
         <Tooltip
-          active={tooltipDisabled ? false : undefined}
           content={<ChartTooltip />}
           cursor={{ fill: "currentColor", opacity: 0.06 }}
           isAnimationActive={false}
@@ -105,29 +102,19 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
   const [displayedData, setDisplayedData] = useState(data);
   const [displayedKey, setDisplayedKey] = useState(dataKey);
   const [axisMax, setAxisMax] = useState(nextAxisMax);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     if (dataKey === displayedKey) return;
 
     setDisplayedData(data);
     setDisplayedKey(dataKey);
-    setIsTransitioning(true);
     setAxisMax((currentMax) => Math.max(currentMax, nextAxisMax));
-
-    const frame = requestAnimationFrame(() => {
-      setIsTransitioning(false);
-    });
 
     const timer = window.setTimeout(() => {
       setAxisMax(nextAxisMax);
-      setIsTransitioning(false);
     }, CHART_TRANSITION_MS);
 
-    return () => {
-      cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-    };
+    return () => window.clearTimeout(timer);
   }, [data, dataKey, displayedKey, nextAxisMax]);
 
   if (data.length === 0) {
@@ -142,17 +129,8 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
   return (
     <Card>
       <h3 className="mb-3 text-sm font-semibold">{t.chart.spendingOverTime}</h3>
-      <div
-        className={[
-          "h-56 w-full transition-[opacity,transform] duration-[420ms] ease-out will-change-transform",
-          isTransitioning ? "translate-y-1 opacity-70" : "translate-y-0 opacity-100",
-        ].join(" ")}
-      >
-        <ChartCanvas
-          data={displayedData}
-          tooltipDisabled={isTransitioning}
-          axisMax={axisMax}
-        />
+      <div className="h-56 w-full">
+        <ChartCanvas data={displayedData} axisMax={axisMax} />
       </div>
     </Card>
   );
