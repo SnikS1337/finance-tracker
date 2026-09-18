@@ -86,6 +86,17 @@ export interface Dictionary {
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
   };
+  quickAdd: {
+    title: string;
+    expense: string;
+    income: string;
+    amountLabel: string;
+    categoryLabel: string;
+    addExpense: string;
+    addIncome: string;
+    errorAmount: string;
+    errorCategory: string;
+  };
   transactionForm: {
     addExpenseTitle: string;
     addIncomeTitle: string;
