@@ -91,6 +91,7 @@ export const ru: Dictionary = {
     categoryLabel: "Категория",
     addExpense: "Добавить расход",
     addIncome: "Добавить доход",
+    fullInput: "Расширенный ввод",
     errorAmount: "Введите сумму больше нуля.",
     errorCategory: "Выберите категорию.",
   },
