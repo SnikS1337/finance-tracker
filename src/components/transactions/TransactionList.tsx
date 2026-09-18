@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { format, isToday, isYesterday } from "date-fns";
 import type { Category, Transaction } from "../../types";
 import { formatSignedCurrency } from "../../lib/currency";
@@ -16,9 +17,99 @@ interface Props {
   transactions: Transaction[];
   categories: Category[];
   onSelect: (transaction: Transaction) => void;
+  onDelete?: (transaction: Transaction) => void;
 }
 
-export function TransactionList({ transactions, categories, onSelect }: Props) {
+function SwipeableTransactionRow({
+  transaction,
+  category,
+  isFirst,
+  onSelect,
+  onDelete,
+}: {
+  transaction: Transaction;
+  category?: Category;
+  isFirst: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+}) {
+  const [offset, setOffset] = useState(0);
+  const start = useRef({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const horizontal = useRef(false);
+
+  const reset = () => {
+    setOffset(0);
+    dragging.current = false;
+    horizontal.current = false;
+  };
+
+  return (
+    <div className={cn("relative overflow-hidden", !isFirst && "border-t border-neutral-100 dark:border-neutral-800")}>
+      <div className="absolute inset-y-0 right-0 flex w-20 items-center justify-center bg-red-500 text-sm font-medium text-white">
+        Удалить
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          if (offset !== 0) reset();
+          else onSelect();
+        }}
+        onTouchStart={(e) => {
+          const touch = e.touches[0];
+          start.current = { x: touch.clientX, y: touch.clientY };
+          dragging.current = true;
+        }}
+        onTouchMove={(e) => {
+          if (!dragging.current) return;
+          const touch = e.touches[0];
+          const dx = touch.clientX - start.current.x;
+          const dy = touch.clientY - start.current.y;
+          if (!horizontal.current && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) {
+            dragging.current = false;
+            return;
+          }
+          if (Math.abs(dx) > 8) horizontal.current = true;
+          if (horizontal.current) {
+            e.preventDefault();
+            setOffset(Math.max(-96, Math.min(0, dx)));
+          }
+        }}
+        onTouchEnd={() => {
+          if (!dragging.current) return;
+          const shouldDelete = offset <= -72;
+          reset();
+          if (shouldDelete) onDelete?.();
+        }}
+        className={cn(
+          "relative flex w-full items-center gap-3 bg-white px-4 py-3 text-left transition-transform duration-150 ease-out dark:bg-surface-dark-subtle",
+          offset === 0 && "hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+        )}
+        style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
+      >
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base"
+          style={{ backgroundColor: (category?.color ?? "#999") + "22" }}
+        >
+          {category?.icon ?? "❓"}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">
+          {category?.name ?? t.common.unknownCategory}
+        </span>
+        <span
+          className={cn(
+            "shrink-0 text-sm font-semibold tabular-nums",
+            transaction.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-neutral-900 dark:text-neutral-100"
+          )}
+        >
+          {formatSignedCurrency(transaction.amount, transaction.type)}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+export function TransactionList({ transactions, categories, onSelect, onDelete }: Props) {
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   const groups = new Map<string, Transaction[]>();
@@ -48,32 +139,14 @@ export function TransactionList({ transactions, categories, onSelect }: Props) {
               {dayTransactions.map((tx, i) => {
                 const category = categoryById.get(tx.categoryId);
                 return (
-                  <button
+                  <SwipeableTransactionRow
                     key={tx.id}
-                    onClick={() => onSelect(tx)}
-                    className={cn(
-                      "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/60",
-                      i !== 0 && "border-t border-neutral-100 dark:border-neutral-800"
-                    )}
-                  >
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base"
-                      style={{ backgroundColor: (category?.color ?? "#999") + "22" }}
-                    >
-                      {category?.icon ?? "❓"}
-                    </span>
-                    <span className="flex-1 truncate text-sm font-medium">
-                      {category?.name ?? t.common.unknownCategory}
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 text-sm font-semibold tabular-nums",
-                        tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-neutral-900 dark:text-neutral-100"
-                      )}
-                    >
-                      {formatSignedCurrency(tx.amount, tx.type)}
-                    </span>
-                  </button>
+                    transaction={tx}
+                    category={category}
+                    isFirst={i === 0}
+                    onSelect={() => onSelect(tx)}
+                    onDelete={onDelete ? () => onDelete(tx) : undefined}
+                  />
                 );
               })}
             </div>
