@@ -11,6 +11,7 @@ export function TransactionSheetProvider({ children }: { children: ReactNode }) 
         openAdd: (type = "expense", mode = "quick") => setState({ open: true, transaction: null, initialType: type, mode }),
         openEdit: (transaction) => setState({ open: true, transaction, initialType: transaction.type, mode: "full" }),
         close: () => setState((s) => ({ ...s, open: false })),
+        setMode: (mode) => setState((s) => ({ ...s, mode })),
       }}
     >
       {children}
