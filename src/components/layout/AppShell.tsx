@@ -26,6 +26,7 @@ export function AppShell() {
         categories={categories}
         transaction={state.transaction}
         initialType={state.initialType}
+        mode={state.mode}
         onSubmit={(input) => {
           if (state.transaction) {
             editTransaction(state.transaction.id, input);
