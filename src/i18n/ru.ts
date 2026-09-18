@@ -225,7 +225,6 @@ export const ru: Dictionary = {
     topCategories: "Основные категории",
     footer: "Финансовый учёт",
     downloadPng: "Скачать PNG",
-    downloadSvg: "Скачать SVG",
     generating: "Формирование…",
   },
   onboarding: {
