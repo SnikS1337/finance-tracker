@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { toPng } from "html-to-image";
+import { toPng, toSvg } from "html-to-image";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { PeriodSelector } from "../dashboard/PeriodSelector";
@@ -34,14 +34,17 @@ export function ReportGenerator() {
   const topCategories = calculateExpenseCategoryTotals(transactions, range).slice(0, 4);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
-  async function handleDownload() {
+  async function handleDownload(format: "png" | "svg") {
     if (!reportRef.current) return;
     setGenerating(true);
     try {
-      const dataUrl = await toPng(reportRef.current, { pixelRatio: 2 });
+      const dataUrl =
+        format === "svg"
+          ? await toSvg(reportRef.current)
+          : await toPng(reportRef.current, { pixelRatio: 2 });
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.png`;
+      a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.${format}`;
       a.click();
     } finally {
       setGenerating(false);
@@ -132,9 +135,14 @@ export function ReportGenerator() {
         </div>
       </div>
 
-      <Button onClick={handleDownload} disabled={generating} className="w-full">
-        {generating ? t.report.generating : t.report.downloadPng}
-      </Button>
+      <div className="grid grid-cols-2 gap-2">
+        <Button onClick={() => handleDownload("png")} disabled={generating}>
+          {generating ? t.report.generating : t.report.downloadPng}
+        </Button>
+        <Button onClick={() => handleDownload("svg")} disabled={generating} variant="secondary">
+          {t.report.downloadSvg}
+        </Button>
+      </div>
     </Card>
   );
 }
