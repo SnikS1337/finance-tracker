@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, matchByDataKey } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { BarShapeProps } from "recharts";
 import { Card } from "../ui/Card";
 import { EmptyState } from "../ui/EmptyState";
