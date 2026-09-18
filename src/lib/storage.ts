@@ -225,7 +225,7 @@ function isTransactionArray(v: unknown): v is Transaction[] {
         tx.amount > 0 &&
         typeof tx.categoryId === "string" &&
         typeof tx.date === "string" &&
-        /^\\d{4}-\\d{2}-\\d{2}$/.test(tx.date)
+        /^\d{4}-\d{2}-\d{2}$/.test(tx.date)
     )
   );
 }
