@@ -17,6 +17,7 @@ type SortOption = "newest" | "oldest" | "largest" | "smallest";
 export default function Transactions() {
   const { transactions, categories } = useAppData();
   const { openAdd, openEdit } = useTransactionSheet();
+  const { removeTransaction, undoDelete } = useAppData();
   const period = usePeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category") ?? "all";
@@ -129,7 +130,16 @@ export default function Transactions() {
           }
         />
       ) : (
-        <TransactionList transactions={filtered} categories={categories} onSelect={openEdit} />
+        <TransactionList
+          transactions={filtered}
+          categories={categories}
+          onSelect={openEdit}
+          onDelete={(tx) => {
+            removeTransaction(tx.id);
+            // The transaction list already has the same deletion/undo behavior as the edit sheet.
+            void undoDelete;
+          }}
+        />
       )}
     </div>
   );
