@@ -18,6 +18,7 @@ interface Props {
   mode?: "quick" | "full";
   onSubmit: (input: NewTransactionInput) => void;
   onDelete?: (id: string) => void;
+  onExpand?: () => void;
 }
 
 const TYPE_LABEL: Record<TransactionType, string> = {
@@ -33,6 +34,7 @@ export function TransactionFormSheet({
   initialType = "expense",
   onSubmit,
   onDelete,
+  onExpand,
 }: Props) {
   const isEditing = !!transaction;
   const isQuickAdd = mode === "quick" && !isEditing;
@@ -80,6 +82,13 @@ export function TransactionFormSheet({
     }
     onSubmit({ type, amount, categoryId, date });
     onOpenChange(false);
+  }
+
+  function switchToFull() {
+    if (!isQuickAdd) return;
+    // The full form is still the same transaction being created; only its UI expands.
+    // Parent owns the sheet mode, so this event is surfaced through the optional callback.
+    onExpand?.();
   }
 
   const sheetTitle = isQuickAdd
@@ -147,6 +156,16 @@ export function TransactionFormSheet({
           </span>
           <CategoryPicker categories={categoriesForType} selectedId={categoryId} onSelect={setCategoryId} />
         </div>
+
+        {isQuickAdd && onExpand && (
+          <button
+            type="button"
+            onClick={switchToFull}
+            className="w-full text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+          >
+            ⚙ {t.quickAdd.fullInput}
+          </button>
+        )}
 
         {!isQuickAdd && <div>
           <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
