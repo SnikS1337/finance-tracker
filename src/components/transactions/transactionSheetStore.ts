@@ -13,6 +13,7 @@ export interface TransactionSheetContextValue {
   openAdd: (type?: TransactionType, mode?: "quick" | "full") => void;
   openEdit: (transaction: Transaction) => void;
   close: () => void;
+  setMode: (mode: "quick" | "full") => void;
 }
 
 export const TransactionSheetContext: Context<TransactionSheetContextValue | null> =
