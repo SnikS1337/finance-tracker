@@ -120,10 +120,17 @@ export function TransactionFormSheet({
             <input
               id="amount"
               inputMode="numeric"
+              enterKeyHint="done"
               autoComplete="off"
               placeholder="0"
               value={formatAmountInput(amountRaw)}
               onChange={(e) => setAmountRaw(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
               className="w-full bg-transparent text-2xl font-semibold tabular-nums outline-none placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
             />
             <span className="text-2xl font-semibold text-neutral-400">₫</span>
