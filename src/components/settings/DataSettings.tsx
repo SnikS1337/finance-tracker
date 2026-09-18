@@ -1,0 +1,102 @@
+import { useRef, useState } from "react";
+import { Card } from "../ui/Card";
+import { Button } from "../ui/Button";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { useToast } from "../../hooks/useToast";
+import { useAppData } from "../../hooks/useAppData";
+import * as storage from "../../lib/storage";
+import { downloadCSV, downloadJSONBackup, readFileAsText } from "../../lib/export";
+import { t } from "../../i18n";
+
+export function DataSettings() {
+  const { categories, refresh } = useAppData();
+  const { showToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [confirmImport, setConfirmImport] = useState<File | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  async function doImport(file: File) {
+    try {
+      const text = await readFileAsText(file);
+      const json = JSON.parse(text);
+      storage.importBackup(json);
+      refresh();
+      showToast({ message: t.toasts.backupImported });
+      setImportError(null);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : t.data.importGenericError);
+    }
+  }
+
+  return (
+    <Card className="space-y-3">
+      <h3 className="text-sm font-semibold">{t.settings.dataSection}</h3>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            downloadJSONBackup(storage.exportBackup());
+            showToast({ message: t.toasts.backupExported });
+          }}
+        >
+          {t.data.exportJson}
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+          {t.data.importJson}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            downloadCSV(storage.getTransactions(), categories);
+            showToast({ message: t.toasts.csvExported });
+          }}
+        >
+          {t.data.exportCsv}
+        </Button>
+        <Button variant="danger" size="sm" onClick={() => setConfirmDeleteAll(true)}>
+          {t.data.deleteAll}
+        </Button>
+      </div>
+
+      {importError && <p className="text-sm text-red-600 dark:text-red-400">{importError}</p>}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) setConfirmImport(file);
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmImport}
+        onOpenChange={(open) => !open && setConfirmImport(null)}
+        title={t.data.importConfirmTitle}
+        description={t.data.importConfirmDescription}
+        confirmLabel={t.data.importConfirmCta}
+        onConfirm={() => confirmImport && doImport(confirmImport)}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteAll}
+        onOpenChange={setConfirmDeleteAll}
+        title={t.data.deleteAllConfirmTitle}
+        description={t.data.deleteAllConfirmDescription}
+        confirmLabel={t.data.deleteAllConfirmCta}
+        onConfirm={() => {
+          storage.clearAllData();
+          refresh();
+          showToast({ message: t.toasts.allDataDeleted });
+        }}
+      />
+    </Card>
+  );
+}
