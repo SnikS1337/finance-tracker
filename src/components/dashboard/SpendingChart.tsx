@@ -39,7 +39,7 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
                 tickFormatter={(v) => (v >= 1_000_000 ? `${v / 1_000_000} млн` : v >= 1000 ? `${v / 1000} тыс` : String(v))}
                 width={72}
               />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "currentColor", opacity: 0.06 }} />
+              <Tooltip\n                content={<ChartTooltip />}\n                cursor={{ fill: "currentColor", opacity: 0.06 }}\n                isAnimationActive={false}\n              />
               <Bar
                 dataKey="value"
                 fill="#0ea5e9"
