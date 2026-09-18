@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { toPng, toSvg } from "html-to-image";
+import { toSvg } from "html-to-image";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { PeriodSelector } from "../dashboard/PeriodSelector";
@@ -34,17 +34,37 @@ export function ReportGenerator() {
   const topCategories = calculateExpenseCategoryTotals(transactions, range).slice(0, 4);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
-  async function handleDownload(format: "png" | "svg") {
+  async function handleDownload() {
     if (!reportRef.current) return;
     setGenerating(true);
     try {
-      const dataUrl =
-        format === "svg"
-          ? await toSvg(reportRef.current)
-          : await toPng(reportRef.current, { pixelRatio: 2 });
+      const svgDataUrl = await toSvg(reportRef.current);
+      const image = new Image();
+      image.decoding = "async";
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Не удалось подготовить SVG для PNG"));
+        image.src = svgDataUrl;
+      });
+
+      const scale = 3;
+      const width = reportRef.current.offsetWidth;
+      const height = reportRef.current.offsetHeight;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Не удалось создать canvas");
+
+      context.scale(scale, scale);
+      context.drawImage(image, 0, 0, width, height);
+
+      const dataUrl = canvas.toDataURL("image/png");
       const a = document.createElement("a");
       a.href = dataUrl;
-      a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.${format}`;
+      a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
     } finally {
       setGenerating(false);
@@ -135,14 +155,9 @@ export function ReportGenerator() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <Button onClick={() => handleDownload("png")} disabled={generating}>
-          {generating ? t.report.generating : t.report.downloadPng}
-        </Button>
-        <Button onClick={() => handleDownload("svg")} disabled={generating} variant="secondary">
-          {t.report.downloadSvg}
-        </Button>
-      </div>
+      <Button onClick={handleDownload} disabled={generating} className="w-full">
+        {generating ? t.report.generating : t.report.downloadPng}
+      </Button>
     </Card>
   );
 }
