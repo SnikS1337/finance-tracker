@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet } from "../ui/Sheet";
 import { Button } from "../ui/Button";
 import type { Category } from "../../types";
@@ -15,6 +15,12 @@ interface Props {
 
 export function ReassignCategorySheet({ open, onOpenChange, category, otherCategories, transactionCount, onConfirm }: Props) {
   const [targetId, setTargetId] = useState<string>(otherCategories[0]?.id ?? "");
+
+  useEffect(() => {
+    if (!open) return;
+    // oxlint-disable-next-line react/set-state-in-effect
+    setTargetId(otherCategories[0]?.id ?? "");
+  }, [open, category?.id, otherCategories]);
 
   if (!category) return null;
 
