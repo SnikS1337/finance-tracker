@@ -69,4 +69,5 @@ export function PeriodSelector({ value, onChange, customStart, customEnd, onCust
       )}
       {invalidRange && <p className="mt-2 text-xs text-red-600 dark:text-red-400">{t.period.invalidRange}</p>}
     </div>
-  }
+  );
+}
