@@ -70,11 +70,11 @@ export function TransactionFormSheet({
   function handleSubmit() {
     const amount = parseAmountInput(amountRaw);
     if (amount <= 0) {
-      setError(t.transactionForm.errorAmount);
+      setError(isQuickAdd ? t.quickAdd.errorAmount : t.transactionForm.errorAmount);
       return;
     }
     if (!categoryId) {
-      setError(t.transactionForm.errorCategory);
+      setError(isQuickAdd ? t.quickAdd.errorCategory : t.transactionForm.errorCategory);
       return;
     }
     if (!date) {
@@ -103,7 +103,7 @@ export function TransactionFormSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={sheetTitle}>
       <div className="space-y-5">
-        {!isEditing && !isQuickAdd && (
+        {!isEditing && (
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800">
             {(["expense", "income"] as TransactionType[]).map((typeOption) => (
               <button
