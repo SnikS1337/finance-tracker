@@ -83,6 +83,17 @@ export const ru: Dictionary = {
     emptyTitleNoMatch: "Ничего не найдено",
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
   },
+  quickAdd: {
+    title: "Быстро добавить",
+    expense: "Расход",
+    income: "Доход",
+    amountLabel: "Сумма",
+    categoryLabel: "Категория",
+    addExpense: "Добавить расход",
+    addIncome: "Добавить доход",
+    errorAmount: "Введите сумму больше нуля.",
+    errorCategory: "Выберите категорию.",
+  },
   transactionForm: {
     addExpenseTitle: "Новый расход",
     addIncomeTitle: "Новый доход",
