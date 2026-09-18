@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowDownCircle, ArrowUpCircle, Settings2 } from "lucide-react";
 import { Sheet } from "../ui/Sheet";
 import { Button } from "../ui/Button";
 import { CategoryPicker } from "../categories/CategoryPicker";
@@ -26,6 +27,11 @@ const TYPE_LABEL: Record<TransactionType, string> = {
   income: t.transactionForm.income,
 };
 
+const TYPE_ICON = {
+  expense: ArrowDownCircle,
+  income: ArrowUpCircle,
+} as const;
+
 export function TransactionFormSheet({
   open,
   onOpenChange,
@@ -45,9 +51,6 @@ export function TransactionFormSheet({
   const [date, setDate] = useState(todayKey());
   const [error, setError] = useState<string | null>(null);
 
-  // Resets the form to match whatever is being opened (blank for "add", populated
-  // for "edit"). Deliberate: this synchronizes local form state with the `transaction`
-  // prop whenever the sheet opens, which is exactly what an effect is for.
   useEffect(() => {
     if (!open) return;
     if (transaction) {
@@ -87,8 +90,6 @@ export function TransactionFormSheet({
 
   function switchToFull() {
     if (!isQuickAdd) return;
-    // The full form is still the same transaction being created; only its UI expands.
-    // Parent owns the sheet mode, so this event is surfaced through the optional callback.
     onExpand?.();
   }
 
@@ -105,24 +106,28 @@ export function TransactionFormSheet({
       <div className="space-y-5">
         {!isEditing && (
           <div className="grid grid-cols-2 gap-2 rounded-xl bg-neutral-100 p-1 dark:bg-neutral-800">
-            {(["expense", "income"] as TransactionType[]).map((typeOption) => (
-              <button
-                key={typeOption}
-                type="button"
-                onClick={() => {
-                  setType(typeOption);
-                  setCategoryId(null);
-                }}
-                className={cn(
-                  "rounded-lg py-2 text-sm font-medium transition-colors",
-                  type === typeOption
-                    ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
-                    : "text-neutral-500 dark:text-neutral-400"
-                )}
-              >
-                {TYPE_LABEL[typeOption]}
-              </button>
-            ))}
+            {(["expense", "income"] as TransactionType[]).map((typeOption) => {
+              const Icon = TYPE_ICON[typeOption];
+              return (
+                <button
+                  key={typeOption}
+                  type="button"
+                  onClick={() => {
+                    setType(typeOption);
+                    setCategoryId(null);
+                  }}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-all duration-200 active:scale-[0.98]",
+                    type === typeOption
+                      ? "bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white"
+                      : "text-neutral-500 hover:bg-white/60 dark:text-neutral-400 dark:hover:bg-neutral-700/50"
+                  )}
+                >
+                  <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
+                  {TYPE_LABEL[typeOption]}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -130,7 +135,7 @@ export function TransactionFormSheet({
           <label htmlFor="amount" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
             {isQuickAdd ? t.quickAdd.amountLabel : t.transactionForm.amountLabel}
           </label>
-          <div className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-3 focus-within:border-neutral-900 dark:border-neutral-800 dark:focus-within:border-white">
+          <div className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-3 transition-colors focus-within:border-neutral-900 dark:border-neutral-800 dark:focus-within:border-white">
             <input
               id="amount"
               inputMode="numeric"
@@ -162,25 +167,28 @@ export function TransactionFormSheet({
           <button
             type="button"
             onClick={switchToFull}
-            className="w-full text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+            className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
           >
-            ⚙ {t.quickAdd.fullInput}
+            <Settings2 size={15} strokeWidth={1.8} aria-hidden="true" />
+            {t.quickAdd.fullInput}
           </button>
         )}
 
-        {!isQuickAdd && <div>
-          <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {t.transactionForm.dateLabel}
-          </label>
-          <input
-            id="date"
-            type="date"
-            value={date}
-            max={todayKey()}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
-          />
-        </div>}
+        {!isQuickAdd && (
+          <div>
+            <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+              {t.transactionForm.dateLabel}
+            </label>
+            <input
+              id="date"
+              type="date"
+              value={date}
+              max={todayKey()}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+            />
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
