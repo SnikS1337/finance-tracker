@@ -27,13 +27,13 @@ export function PeriodSelector({ value, onChange, customStart, customEnd, onCust
 
   return (
     <div>
-      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
+      <div className="flex flex-wrap gap-2 pb-1">
         {PRESETS.map((p) => (
           <button
             key={p.value}
             onClick={() => onChange(p.value)}
             className={cn(
-              "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+              "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
               value === p.value
                 ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900"
                 : "border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-300"
