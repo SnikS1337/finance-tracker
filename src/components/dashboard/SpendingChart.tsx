@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { BarShapeProps } from "recharts";
 import { Card } from "../ui/Card";
@@ -250,25 +250,7 @@ function ChartCanvas({
 }
 
 export function SpendingChart({ data }: { data: ChartPoint[] }) {
-  const dataKey = data.map(({ label, value }) => `${label}:${value}`).join("|");
   const prepared = prepareDisplayData(data);
-  const [displayedData, setDisplayedData] = useState(prepared.data);
-  const [displayedKey, setDisplayedKey] = useState(dataKey);
-  const [axisMax, setAxisMax] = useState(prepared.axisMax);
-
-  useEffect(() => {
-    if (dataKey === displayedKey) return;
-
-    setDisplayedData(prepared.data);
-    setDisplayedKey(dataKey);
-    setAxisMax((currentMax) => Math.max(currentMax, prepared.axisMax));
-
-    const timer = window.setTimeout(() => {
-      setAxisMax(prepared.axisMax);
-    }, CHART_TRANSITION_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [data, dataKey, displayedKey, prepared]);
 
   if (data.length === 0) {
     return (
@@ -283,7 +265,7 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
     <Card>
       <h3 className="mb-3 text-sm font-semibold">{t.chart.spendingOverTime}</h3>
       <div className="h-56 w-full">
-        <ChartCanvas data={displayedData} axisMax={axisMax} />
+        <ChartCanvas data={prepared.data} axisMax={prepared.axisMax} />
       </div>
     </Card>
   );
