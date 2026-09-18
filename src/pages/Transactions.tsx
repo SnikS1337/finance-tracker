@@ -7,6 +7,7 @@ import { TransactionList } from "../components/transactions/TransactionList";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { useTransactionSheet } from "../hooks/useTransactionSheet";
+import { useToast } from "../hooks/useToast";
 import { isDateKeyInRange } from "../lib/date-utils";
 import type { TransactionType } from "../types";
 import { Search } from "lucide-react";
@@ -18,6 +19,7 @@ export default function Transactions() {
   const { transactions, categories } = useAppData();
   const { openAdd, openEdit } = useTransactionSheet();
   const { removeTransaction, undoDelete } = useAppData();
+  const { showToast } = useToast();
   const period = usePeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryFilter = searchParams.get("category") ?? "all";
@@ -136,8 +138,7 @@ export default function Transactions() {
           onSelect={openEdit}
           onDelete={(tx) => {
             removeTransaction(tx.id);
-            // The transaction list already has the same deletion/undo behavior as the edit sheet.
-            void undoDelete;
+            showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: undoDelete });
           }}
         />
       )}
