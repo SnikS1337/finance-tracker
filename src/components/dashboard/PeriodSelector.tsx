@@ -27,7 +27,7 @@ export function PeriodSelector({ value, onChange, customStart, customEnd, onCust
 
   return (
     <div>
-      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
         {PRESETS.map((p) => (
           <button
             key={p.value}
