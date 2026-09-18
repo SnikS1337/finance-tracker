@@ -36,18 +36,22 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
                 tick={{ fontSize: 11, fill: "currentColor" }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => (v >= 1_000_000 ? `${v / 1_000_000} млн` : v >= 1000 ? `${v / 1000} тыс` : String(v))}
+                tickFormatter={(v) =>
+                  v >= 1_000_000 ? `${v / 1_000_000} млн` : v >= 1000 ? `${v / 1000} тыс` : String(v)
+                }
                 width={72}
               />
-              <Tooltip\n                content={<ChartTooltip />}\n                cursor={{ fill: "currentColor", opacity: 0.06 }}\n                isAnimationActive={false}\n              />
+              <Tooltip
+                content={<ChartTooltip />}
+                cursor={{ fill: "currentColor", opacity: 0.06 }}
+                isAnimationActive={false}
+              />
               <Bar
                 dataKey="value"
                 fill="#0ea5e9"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={28}
-                isAnimationActive
-                animationDuration={700}
-                animationEasing="ease-out"
+                isAnimationActive={false}
               />
             </BarChart>
           </ResponsiveContainer>
