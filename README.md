@@ -1,68 +1,94 @@
-# Personal Finance Tracker
+# Финансовый учёт
 
-A fast, private, offline-first personal finance tracker. All data is stored locally in the browser
-(`localStorage`) — nothing is sent anywhere. Built as an installable PWA so it works offline and can be
-added to your home screen.
+Быстрый, приватный и офлайн-трекер личных финансов. Все данные хранятся локально в браузере
+(`localStorage`) — ничего не отправляется на сервер. Приложение работает как устанавливаемый PWA,
+поэтому его можно использовать офлайн и добавить на главный экран устройства.
 
-## Getting started
+## Запуск проекта
 
 ```bash
 npm install
-npm run dev       # start the dev server
-npm run build     # type-check and build a production bundle into dist/
-npm run preview   # preview the production build locally
-npm test          # run the unit test suite (vitest)
+npm run dev       # запустить сервер разработки
+npm run build     # проверить типы и собрать production-версию в dist/
+npm run preview   # локально посмотреть production-сборку
+npm test          # запустить тесты (Vitest)
 ```
 
-Open the printed local URL (usually `http://localhost:5173`) in your browser.
+Откройте локальный адрес, который напечатает Vite (обычно `http://localhost:5173`).
 
-## Deploying
+## Деплой
 
-`npm run build` produces a static site in `dist/` that can be deployed to any static host (Netlify,
-Vercel, GitHub Pages, Cloudflare Pages, a plain S3 bucket, etc.) — there is no backend.
+`npm run build` создаёт статический сайт в `dist/`, который можно разместить на любом статическом
+хостинге: GitHub Pages, Vercel, Netlify, Cloudflare Pages, S3 и т. д. Бэкенд не требуется.
 
-Because this is a client-side-routed SPA (React Router), configure your host to serve `index.html` for
-unknown paths (a "SPA fallback" / rewrite rule) so that a direct visit or refresh on `/transactions`,
-`/analytics`, or `/settings` works. Most static hosts have a one-line setting for this (e.g. Netlify's
-`_redirects` with `/* /index.html 200`, Vercel's default SPA handling, or GitHub Pages' `404.html` trick).
-`npm run preview` and `npm run dev` already handle this automatically, so it only matters once deployed.
+Приложение использует клиентскую маршрутизацию React Router. При размещении на хостинге необходимо
+учесть SPA-маршрутизацию, чтобы прямой переход или обновление страницы на вложенном маршруте
+корректно отдавали приложение.
 
-## Architecture
+Для локальных `npm run dev` и `npm run preview` дополнительная настройка не требуется.
 
-- **`src/lib/storage.ts`** — the only module that touches `localStorage`. Everything else (hooks, UI)
-  goes through it, so swapping to a remote backend later only means reimplementing this one file.
-- **`src/lib/calculations.ts`** — pure functions for every financial calculation (totals, averages,
-  medians, category breakdowns, budget progress, etc.). These are unit-tested in
-  `src/lib/__tests__/calculations.test.ts`.
-- **`src/lib/date-utils.ts`** — timezone-safe calendar date handling. Transaction dates are plain
-  `yyyy-MM-dd` strings with no timezone component, always parsed/formatted as local dates.
-- **`src/hooks/`** — one hook per data domain (`useTransactions`, `useCategories`, `useBudgets`,
-  `useSettings`), each wrapping the storage layer with React state.
-- **`src/context/AppDataContext.tsx`** — instantiates those hooks once at the app root so every page
-  reads and writes the same in-memory state (rather than each page holding its own stale copy).
-- **`src/components/`** — organized by feature (`transactions/`, `categories/`, `budgets/`,
-  `dashboard/`, `analytics/`, `settings/`, `layout/`) plus a small `ui/` folder of primitives (Button,
-  Card, Sheet, Toast, etc.).
+## Архитектура
 
-## Notable decisions
+- **`src/lib/storage.ts`** — единственный модуль, который работает с `localStorage`. Остальная
+  часть приложения использует его через хуки, поэтому в будущем слой хранения можно заменить на
+  удалённый бэкенд без переписывания UI.
+- **`src/lib/calculations.ts`** — чистые функции для всех финансовых расчётов: доходы, расходы,
+  баланс, средние и медианные значения, разбивка по категориям, прогресс бюджетов и т. д.
+- **`src/lib/date-utils.ts`** — работа с календарными датами без привязки к часовому поясу.
+  Даты операций хранятся как строки формата `yyyy-MM-dd`.
+- **`src/hooks/`** — хуки для отдельных областей данных: `useTransactions`,
+  `useCategories`, `useBudgets`, `useSettings`. Они связывают слой хранения с React-состоянием.
+- **`src/context/AppDataContext.tsx`** — создаёт эти хуки на уровне приложения, благодаря чему
+  все страницы работают с единым состоянием и не держат отдельные устаревшие копии данных.
+- **`src/components/`** — компоненты организованы по функциональности: `transactions/`,
+  `categories/`, `budgets/`, `dashboard/`, `analytics/`, `settings/`, `layout/`,
+  а также небольшая папка `ui/` с базовыми компонентами интерфейса.
 
-- **Currency**: VND only, stored as whole integers (VND has no subunit in everyday use) — this sidesteps
-  floating-point rounding issues entirely.
-- **UI primitives**: hand-built on top of Radix UI primitives (Dialog, Dropdown Menu) rather than a
-  component library, to keep the bundle small and avoid a build-time dependency on a components CLI.
-- **Charts**: Recharts, chosen for its React-native API and reasonable bundle size.
-- **PNG reports**: rendered from a real (hidden) DOM node via `html-to-image`, so the exported image
-  always matches what's on screen.
-- **PWA**: `vite-plugin-pwa` with `autoUpdate` registration. The bundled icon is an SVG; swap in real
-  PNG icons under `public/icons/` for stricter platform install requirements if needed.
-- **Budgets** are always monthly (the only period that makes sense for a recurring budget) and are
-  either "overall" or scoped to one category.
-- **Deleting a category that's still in use** requires reassigning its transactions to another category
-  of the same type first — there is no silent orphaning or cascading delete of transactions.
+## Основные решения
 
-## Testing
+- **Валюта:** только VND (₫), суммы хранятся целыми числами. Дробные единицы для VND не
+  используются, поэтому приложение не сталкивается с типичными проблемами округления денежных
+  значений с плавающей точкой.
+- **Хранение:** данные находятся только в браузере пользователя. Бэкенда, аккаунтов и синхронизации
+  в текущей версии нет.
+- **Резервная копия:** данные можно экспортировать в JSON и восстановить из резервной копии.
+- **Экспорт:** операции можно выгрузить в CSV, а финансовый отчёт за выбранный период — в PNG.
+- **Графики:** используется Recharts.
+- **PNG-отчёты:** отчёт сначала формируется из DOM через `html-to-image`, а затем преобразуется
+  в PNG высокого разрешения.
+- **PWA:** используется `vite-plugin-pwa` с автоматическим обновлением service worker.
+- **Бюджеты:** бюджеты всегда месячные и могут быть общими или привязанными к конкретной категории.
+- **Удаление категории:** если категория используется операциями, перед удалением необходимо
+  переназначить эти операции на другую активную категорию того же типа. Операции не удаляются
+  автоматически.
+- **Мобильный ввод:** форма операции поддерживает подтверждение через клавишу Done/Enter на
+  экранной клавиатуре.
 
-`npm test` runs the calculation unit tests, which cover: income/expense/balance totals, average vs.
-median daily spend (including how zero-spend days factor in), category percentage breakdowns,
-highest/lowest spending day, period-over-period percentage change (including the undefined-when-previous-
-is-zero case), and budget status thresholds (normal / approaching / exceeded).
+## Тестирование
+
+`npm test` запускает unit-тесты финансовой логики. Они проверяют:
+
+- расчёт доходов, расходов и баланса;
+- средние и медианные ежедневные расходы;
+- учёт дней без расходов при расчёте среднего и медианы;
+- разбивку расходов и доходов по категориям;
+- самый дорогой и самый дешёвый день с расходами;
+- изменение показателей относительно предыдущего периода;
+- поведение процентного изменения при предыдущем значении, равном нулю;
+- пороги статусов бюджета.
+
+Перед публикацией также рекомендуется запускать:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+## Текущая версия
+
+**V1.0 — стабильная версия.**
+
+Приложение рассчитано на локальное личное использование. Архитектура слоя хранения оставлена
+достаточно изолированной, чтобы в будущем добавить синхронизацию и другие внешние интеграции без
+необходимости переделывать основную бизнес-логику и интерфейс.
