@@ -6,19 +6,28 @@ import { formatCurrency } from "../../lib/currency";
 import type { ChartPoint } from "../../lib/chart-data";
 import { t } from "../../i18n";
 
-const CHART_TRANSITION_MS = 280;
+const CHART_TRANSITION_MS = 420;
 
 function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
+
   return (
     <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
       <p className="font-medium">{label}</p>
-      <p className="mt-0.5 text-neutral-500 dark:text-neutral-400">{formatCurrency(payload[0].value)}</p>
+      <p className="mt-0.5 text-neutral-500 dark:text-neutral-400">
+        {formatCurrency(payload[0].value)}
+      </p>
     </div>
   );
 }
 
-function ChartCanvas({ data }: { data: ChartPoint[] }) {
+function ChartCanvas({
+  data,
+  tooltipDisabled,
+}: {
+  data: ChartPoint[];
+  tooltipDisabled: boolean;
+}) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
@@ -34,14 +43,20 @@ function ChartCanvas({ data }: { data: ChartPoint[] }) {
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) =>
-            v >= 1_000_000 ? `${v / 1_000_000} млн` : v >= 1000 ? `${v / 1000} тыс` : String(v)
+            v >= 1_000_000
+              ? `${v / 1_000_000} млн`
+              : v >= 1000
+                ? `${v / 1000} тыс`
+                : String(v)
           }
           width={72}
         />
         <Tooltip
+          active={tooltipDisabled ? false : undefined}
           content={<ChartTooltip />}
           cursor={{ fill: "currentColor", opacity: 0.06 }}
           isAnimationActive={false}
+          animationDuration={0}
         />
         <Bar
           dataKey="value"
@@ -49,7 +64,7 @@ function ChartCanvas({ data }: { data: ChartPoint[] }) {
           radius={[4, 4, 0, 0]}
           maxBarSize={28}
           isAnimationActive
-          animationDuration={450}
+          animationDuration={CHART_TRANSITION_MS}
           animationEasing="ease-out"
           animationMatchBy={matchByDataKey("label")}
         />
@@ -62,24 +77,21 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
   const dataKey = data.map(({ label, value }) => `${label}:${value}`).join("|");
   const [displayedData, setDisplayedData] = useState(data);
   const [displayedKey, setDisplayedKey] = useState(dataKey);
-  const [incomingData, setIncomingData] = useState<ChartPoint[] | null>(null);
-  const [transitionPhase, setTransitionPhase] = useState<"idle" | "enter" | "active">("idle");
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     if (dataKey === displayedKey) return;
 
-    setIncomingData(data);
-    setTransitionPhase("enter");
+    setDisplayedData(data);
+    setDisplayedKey(dataKey);
+    setIsTransitioning(true);
 
     const frame = requestAnimationFrame(() => {
-      setTransitionPhase("active");
+      setIsTransitioning(false);
     });
 
     const timer = window.setTimeout(() => {
-      setDisplayedData(data);
-      setDisplayedKey(dataKey);
-      setIncomingData(null);
-      setTransitionPhase("idle");
+      setIsTransitioning(false);
     }, CHART_TRANSITION_MS);
 
     return () => {
@@ -97,31 +109,16 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
     );
   }
 
-  const chartTransition =
-    "absolute inset-0 transition-[opacity,transform] duration-[280ms] ease-out will-change-transform";
-
   return (
     <Card>
       <h3 className="mb-3 text-sm font-semibold">{t.chart.spendingOverTime}</h3>
-      <div className="relative h-56 w-full overflow-hidden">
-        <div
-          className={`${chartTransition} ${
-            transitionPhase === "active" && incomingData ? "opacity-0 scale-[0.99] -translate-y-1" : "opacity-100 scale-100 translate-y-0"
-          }`}
-          aria-hidden={Boolean(incomingData)}
-        >
-          <ChartCanvas data={displayedData} />
-        </div>
-
-        {incomingData && (
-          <div
-            className={`${chartTransition} ${
-              transitionPhase === "active" ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-[0.99] translate-y-1"
-            }`}
-          >
-            <ChartCanvas data={incomingData} />
-          </div>
-        )}
+      <div
+        className={[
+          "h-56 w-full transition-[opacity,transform] duration-[420ms] ease-out will-change-transform",
+          isTransitioning ? "translate-y-1 opacity-70" : "translate-y-0 opacity-100",
+        ].join(" ")}
+      >
+        <ChartCanvas data={displayedData} tooltipDisabled={isTransitioning} />
       </div>
     </Card>
   );
