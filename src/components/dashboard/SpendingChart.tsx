@@ -125,11 +125,27 @@ function SpendingBarShape(props: BarShapeProps) {
 
   if (x == null || y == null || width == null || height == null) return null;
 
-  const point = payload as DisplayPoint | undefined;
   const left = Number(x);
   const top = Number(y);
   const barWidth = Number(width);
   const barHeight = Number(height);
+
+  if (![left, top, barWidth, barHeight].every(Number.isFinite)) return null;
+
+  const point = payload as DisplayPoint | undefined;
+
+  if (barHeight === 0) {
+    return (
+      <rect
+        x={left}
+        y={top}
+        width={barWidth}
+        height={0}
+        fill={fill}
+      />
+    );
+  }
+
   const bottom = top + barHeight;
 
   if (!point?.isOutlier) {
