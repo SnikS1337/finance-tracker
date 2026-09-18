@@ -221,8 +221,11 @@ function isTransactionArray(v: unknown): v is Transaction[] {
         typeof tx.id === "string" &&
         (tx.type === "income" || tx.type === "expense") &&
         typeof tx.amount === "number" &&
+        Number.isSafeInteger(tx.amount) &&
+        tx.amount > 0 &&
         typeof tx.categoryId === "string" &&
-        typeof tx.date === "string"
+        typeof tx.date === "string" &&
+        /^\\d{4}-\\d{2}-\\d{2}$/.test(tx.date)
     )
   );
 }
@@ -235,7 +238,16 @@ function isCategoryArray(v: unknown): v is Category[] {
 }
 
 function isBudgetArray(v: unknown): v is Budget[] {
-  return Array.isArray(v) && v.every((b) => b && typeof b.id === "string" && typeof b.amount === "number");
+  return Array.isArray(v) &&
+    v.every(
+      (b) =>
+        b &&
+        typeof b.id === "string" &&
+        typeof b.amount === "number" &&
+        Number.isSafeInteger(b.amount) &&
+        b.amount > 0 &&
+        (b.categoryId === undefined || typeof b.categoryId === "string")
+    );
 }
 
 /** Validates and imports a backup. Throws InvalidBackupError with a human-readable message on failure. */
