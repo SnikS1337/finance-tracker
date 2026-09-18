@@ -94,6 +94,7 @@ export interface Dictionary {
     categoryLabel: string;
     addExpense: string;
     addIncome: string;
+    fullInput: string;
     errorAmount: string;
     errorCategory: string;
   };
