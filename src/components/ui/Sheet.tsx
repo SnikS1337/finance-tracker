@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { t } from "../../i18n";
 
@@ -11,6 +12,42 @@ interface Props {
 }
 
 export function Sheet({ open, onOpenChange, title, children }: Props) {
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(0);
+
+  useEffect(() => {
+    if (!open) {
+      setKeyboardInset(0);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateViewport = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      setKeyboardInset(inset);
+      setViewportHeight(viewport.height);
+    };
+
+    updateViewport();
+    viewport.addEventListener("resize", updateViewport);
+    viewport.addEventListener("scroll", updateViewport);
+
+    return () => {
+      viewport.removeEventListener("resize", updateViewport);
+      viewport.removeEventListener("scroll", updateViewport);
+    };
+  }, [open]);
+
+  const keyboardStyle =
+    keyboardInset > 0
+      ? {
+          bottom: `${keyboardInset}px`,
+          maxHeight: `${Math.max(240, viewportHeight - 16)}px`,
+        }
+      : undefined;
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -19,6 +56,7 @@ export function Sheet({ open, onOpenChange, title, children }: Props) {
         />
         <Dialog.Content
           className="fixed inset-x-0 bottom-0 z-50 max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl focus:outline-none data-[state=open]:animate-sheet-in-mobile data-[state=closed]:animate-sheet-out-mobile dark:bg-surface-dark-subtle md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-full md:max-w-md md:rounded-2xl md:data-[state=open]:animate-sheet-in-desktop md:data-[state=closed]:animate-sheet-out-desktop"
+          style={keyboardStyle}
           aria-describedby={undefined}
         >
           <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-neutral-200 dark:bg-neutral-700 md:hidden" />
