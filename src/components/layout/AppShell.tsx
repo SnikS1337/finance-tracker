@@ -8,7 +8,7 @@ import { useToast } from "../../hooks/useToast";
 import { t } from "../../i18n";
 
 export function AppShell() {
-  const { state, openAdd, close } = useTransactionSheet();
+  const { state, openAdd, close, setMode } = useTransactionSheet();
   const { categories, addTransaction, editTransaction, removeTransaction, undoDelete } = useAppData();
   const { showToast } = useToast();
 
@@ -27,6 +27,7 @@ export function AppShell() {
         transaction={state.transaction}
         initialType={state.initialType}
         mode={state.mode}
+        onExpand={() => setMode("full")}
         onSubmit={(input) => {
           if (state.transaction) {
             editTransaction(state.transaction.id, input);
