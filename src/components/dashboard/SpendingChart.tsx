@@ -207,7 +207,7 @@ function ChartCanvas({
 }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+      <BarChart data={data} margin={{ top: 12, right: 4, left: 0, bottom: 0 }}>
         <XAxis
           dataKey="label"
           tick={{ fontSize: 11, fill: "currentColor" }}
@@ -242,10 +242,7 @@ function ChartCanvas({
           fill="#0ea5e9"
           maxBarSize={28}
           shape={SpendingBarShape}
-          isAnimationActive
-          animationDuration={CHART_TRANSITION_MS}
-          animationEasing="ease-out"
-          animationMatchBy={matchByDataKey("label")}
+          isAnimationActive={false}
         />
       </BarChart>
     </ResponsiveContainer>
