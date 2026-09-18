@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import type { Category, Transaction } from "../../types";
 import { formatSignedCurrency } from "../../lib/currency";
@@ -46,8 +47,12 @@ function SwipeableTransactionRow({
 
   return (
     <div className={cn("relative overflow-hidden", !isFirst && "border-t border-neutral-100 dark:border-neutral-800")}>
-      <div className="absolute inset-y-0 right-0 flex w-20 items-center justify-center bg-red-500 text-sm font-medium text-white">
-        Удалить
+      <div
+        className="absolute inset-y-0 right-0 flex w-20 items-center justify-center bg-red-500 text-sm font-medium text-white"
+        aria-hidden="true"
+      >
+        <Trash2 size={17} strokeWidth={1.9} />
+        <span className="sr-only">Удалить</span>
       </div>
       <button
         type="button"
@@ -82,13 +87,13 @@ function SwipeableTransactionRow({
           if (shouldDelete) onDelete?.();
         }}
         className={cn(
-          "relative flex w-full items-center gap-3 bg-white px-4 py-3 text-left transition-transform duration-150 ease-out dark:bg-surface-dark-subtle",
+          "relative flex w-full items-center gap-3 bg-white px-4 py-3 text-left transition-transform duration-150 ease-out active:bg-neutral-50 dark:bg-surface-dark-subtle dark:active:bg-neutral-800/60",
           offset === 0 && "hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
         )}
         style={{ transform: `translateX(${offset}px)`, touchAction: "pan-y" }}
       >
         <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base transition-transform duration-200"
           style={{ backgroundColor: (category?.color ?? "#999") + "22" }}
         >
           {category?.icon ?? "❓"}

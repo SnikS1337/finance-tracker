@@ -16,9 +16,8 @@ import { t } from "../i18n";
 type SortOption = "newest" | "oldest" | "largest" | "smallest";
 
 export default function Transactions() {
-  const { transactions, categories } = useAppData();
+  const { transactions, categories, removeTransaction, undoDelete } = useAppData();
   const { openAdd, openEdit } = useTransactionSheet();
-  const { removeTransaction, undoDelete } = useAppData();
   const { showToast } = useToast();
   const period = usePeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();

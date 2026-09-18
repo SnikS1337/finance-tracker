@@ -222,7 +222,6 @@ export interface Dictionary {
     topCategories: string;
     footer: string;
     downloadPng: string;
-    downloadSvg: string;
     generating: string;
   };
   onboarding: {
