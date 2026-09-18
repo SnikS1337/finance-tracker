@@ -108,14 +108,22 @@ export function ReportGenerator() {
                 {t.report.topCategories}
               </p>
               <div className="space-y-1.5">
-                {topCategories.map((c) => (
-                  <div key={c.categoryId} className="flex items-center justify-between text-xs">
-                    <span>
-                      {categoryById.get(c.categoryId)?.icon} {categoryById.get(c.categoryId)?.name}
-                    </span>
-                    <span className="font-semibold">{c.percentage.toFixed(0)}%</span>
-                  </div>
-                ))}
+                {topCategories.map((c) => {
+                  const category = categoryById.get(c.categoryId);
+                  return (
+                    <div key={c.categoryId} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          aria-hidden="true"
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: category?.color ?? "#a3a3a3" }}
+                        />
+                        <span className="min-w-0 break-words">{category?.name ?? t.common.unknownCategory}</span>
+                      </span>
+                      <span className="shrink-0 font-semibold">{c.percentage.toFixed(0)}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
