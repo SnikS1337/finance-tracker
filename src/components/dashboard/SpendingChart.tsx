@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bar, BarChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis, matchByDataKey } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, matchByDataKey } from "recharts";
+import type { BarShapeProps } from "recharts";
 import { Card } from "../ui/Card";
 import { EmptyState } from "../ui/EmptyState";
 import { formatCurrency } from "../../lib/currency";
@@ -11,6 +12,7 @@ const OUTLIER_RATIO = 8;
 
 type DisplayPoint = ChartPoint & {
   displayValue: number;
+  isOutlier?: boolean;
   outlierLabel?: string;
 };
 
@@ -45,29 +47,47 @@ function formatCompactValue(value: number) {
   return String(Math.round(value));
 }
 
+function getOutlierBaseline(values: number[]) {
+  const positiveValues = values.filter((value) => value > 0).sort((a, b) => a - b);
+
+  if (positiveValues.length === 0) return 0;
+  if (positiveValues.length < 3) return positiveValues[0];
+
+  const middle = Math.floor(positiveValues.length / 2);
+
+  return positiveValues.length % 2 === 0
+    ? (positiveValues[middle - 1] + positiveValues[middle]) / 2
+    : positiveValues[middle];
+}
+
 function prepareDisplayData(data: ChartPoint[]): {
   data: DisplayPoint[];
   axisMax: number;
 } {
-  const values = data.map((point) => point.value).sort((a, b) => b - a);
-  const maxValue = values[0] ?? 0;
-  const secondMaxValue = values[1] ?? 0;
-  const hasOutlier =
-    values.length > 1 &&
-    secondMaxValue > 0 &&
-    maxValue >= secondMaxValue * OUTLIER_RATIO;
+  const values = data.map((point) => point.value);
+  const baseline = getOutlierBaseline(values);
+  const hasOutliers = baseline > 0;
 
-  const normalMax = hasOutlier ? secondMaxValue : maxValue;
+  const outlierFlags = data.map(
+    (point) => hasOutliers && point.value >= baseline * OUTLIER_RATIO,
+  );
+
+  const normalValues = data
+    .filter((_, index) => !outlierFlags[index])
+    .map((point) => point.value);
+
+  const normalMax = Math.max(0, ...normalValues);
   const axisMax = getNiceAxisMaxValue(normalMax);
 
   return {
     axisMax,
-    data: data.map((point) => {
-      const isOutlier = hasOutlier && point.value === maxValue;
+    data: data.map((point, index) => {
+      const isOutlier = outlierFlags[index];
 
       return {
         ...point,
-        displayValue: isOutlier ? axisMax : point.value,
+        displayValue: isOutlier ? axisMax * 0.9 : point.value,
+        isOutlier,
         outlierLabel: isOutlier ? `↗ ${formatCompactValue(point.value)}` : undefined,
       };
     }),
@@ -90,6 +110,75 @@ function ChartTooltip({ active, payload, label }: any) {
         {formatCurrency(point.value)}
       </p>
     </div>
+  );
+}
+
+function SpendingBarShape(props: BarShapeProps) {
+  const {
+    x,
+    y,
+    width,
+    height,
+    fill,
+    payload,
+  } = props;
+
+  if (x == null || y == null || width == null || height == null) return null;
+
+  const point = payload as DisplayPoint | undefined;
+  const left = Number(x);
+  const top = Number(y);
+  const barWidth = Number(width);
+  const barHeight = Number(height);
+  const bottom = top + barHeight;
+
+  if (!point?.isOutlier) {
+    return (
+      <rect
+        x={left}
+        y={top}
+        width={barWidth}
+        height={barHeight}
+        rx={4}
+        ry={4}
+        fill={fill}
+      />
+    );
+  }
+
+  const breakHeight = Math.min(7, Math.max(4, barWidth * 0.18));
+  const breakY = top + breakHeight;
+
+  return (
+    <g>
+      <rect
+        x={left}
+        y={breakY + 3}
+        width={barWidth}
+        height={Math.max(0, bottom - breakY - 3)}
+        rx={4}
+        ry={4}
+        fill={fill}
+      />
+      <path
+        d={`M ${left - 1} ${breakY + 1} L ${left + barWidth * 0.35} ${breakY + breakHeight} L ${left + barWidth * 0.65} ${breakY} L ${left + barWidth + 1} ${breakY + breakHeight - 1}`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <text
+        x={left + barWidth / 2}
+        y={Math.max(12, top - 7)}
+        textAnchor="middle"
+        fill="currentColor"
+        fontSize={10}
+        fontWeight={500}
+      >
+        {point.outlierLabel}
+      </text>
+    </g>
   );
 }
 
@@ -135,20 +224,13 @@ function ChartCanvas({
         <Bar
           dataKey="displayValue"
           fill="#0ea5e9"
-          radius={[4, 4, 0, 0]}
           maxBarSize={28}
+          shape={SpendingBarShape}
           isAnimationActive
           animationDuration={CHART_TRANSITION_MS}
           animationEasing="ease-out"
           animationMatchBy={matchByDataKey("label")}
-        >
-          <LabelList
-            dataKey="outlierLabel"
-            position="top"
-            fill="currentColor"
-            fontSize={10}
-          />
-        </Bar>
+        />
       </BarChart>
     </ResponsiveContainer>
   );
