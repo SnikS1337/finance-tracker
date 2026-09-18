@@ -32,6 +32,7 @@ export function TransactionFormSheet({
   categories,
   transaction,
   initialType = "expense",
+  mode = "full",
   onSubmit,
   onDelete,
   onExpand,
