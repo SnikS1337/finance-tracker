@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AppDataProvider } from "./context/AppDataContext";
 import { useAppData } from "./hooks/useAppData";
@@ -40,9 +40,9 @@ export default function App() {
   return (
     <ToastProvider>
       <AppDataProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Gate />
-        </BrowserRouter>
+        </HashRouter>
       </AppDataProvider>
     </ToastProvider>
   );
