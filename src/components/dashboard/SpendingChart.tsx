@@ -1,4 +1,4 @@
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, matchByDataKey } from "recharts";
 import { Card } from "../ui/Card";
 import { EmptyState } from "../ui/EmptyState";
 import { formatCurrency } from "../../lib/currency";
@@ -51,7 +51,10 @@ export function SpendingChart({ data }: { data: ChartPoint[] }) {
                 fill="#0ea5e9"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={28}
-                isAnimationActive={false}
+                isAnimationActive
+                animationDuration={450}
+                animationEasing="ease-out"
+                animationMatchBy={matchByDataKey("label")}
               />
             </BarChart>
           </ResponsiveContainer>
