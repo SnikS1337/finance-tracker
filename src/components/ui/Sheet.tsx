@@ -59,7 +59,6 @@ export function Sheet({ open, onOpenChange, title, children }: Props) {
           style={keyboardStyle}
           aria-describedby={undefined}
         >
-          <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-neutral-200 dark:bg-neutral-700 md:hidden" />
           <div className="mb-4 flex items-center justify-between">
             <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
             <Dialog.Close asChild>
