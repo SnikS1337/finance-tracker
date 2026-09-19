@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const base = '/finance-tracker/'
+const base = process.env.VERCEL === '1' ? '/' : '/finance-tracker/'
 
 export default defineConfig({
   base,
