@@ -38,6 +38,12 @@ function SwipeableTransactionRow({
   const start = useRef({ x: 0, y: 0 });
   const dragging = useRef(false);
   const horizontal = useRef(false);
+  // Tracks whether this touch sequence was a real horizontal drag, independent
+  // of `offset` (which is already reset to 0 by the time the browser's
+  // synthesized click fires after touchend) — otherwise lifting the finger
+  // after a swipe that didn't quite reach the delete threshold would also
+  // open the transaction for editing.
+  const wasDragging = useRef(false);
 
   const reset = () => {
     setOffset(0);
@@ -52,11 +58,15 @@ function SwipeableTransactionRow({
         aria-hidden="true"
       >
         <Trash2 size={17} strokeWidth={1.9} />
-        <span className="sr-only">Удалить</span>
+        <span className="sr-only">{t.common.delete}</span>
       </div>
       <button
         type="button"
         onClick={() => {
+          if (wasDragging.current) {
+            wasDragging.current = false;
+            return;
+          }
           if (offset !== 0) reset();
           else onSelect();
         }}
@@ -76,6 +86,7 @@ function SwipeableTransactionRow({
           }
           if (Math.abs(dx) > 8) horizontal.current = true;
           if (horizontal.current) {
+            wasDragging.current = true;
             e.preventDefault();
             setOffset(Math.max(-96, Math.min(0, dx)));
           }
