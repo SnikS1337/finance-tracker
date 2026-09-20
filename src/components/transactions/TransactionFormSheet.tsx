@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Settings2 } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Sheet } from "../ui/Sheet";
 import { Button } from "../ui/Button";
 import { CategoryPicker } from "../categories/CategoryPicker";
@@ -16,10 +16,8 @@ interface Props {
   /** Present when editing an existing transaction. */
   transaction?: Transaction | null;
   initialType?: TransactionType;
-  mode?: "quick" | "full";
   onSubmit: (input: NewTransactionInput) => void;
   onDelete?: (id: string) => void;
-  onExpand?: () => void;
 }
 
 const TYPE_LABEL: Record<TransactionType, string> = {
@@ -38,19 +36,19 @@ export function TransactionFormSheet({
   categories,
   transaction,
   initialType = "expense",
-  mode = "full",
   onSubmit,
   onDelete,
-  onExpand,
 }: Props) {
   const isEditing = !!transaction;
-  const isQuickAdd = mode === "quick" && !isEditing;
   const [type, setType] = useState<TransactionType>(initialType);
   const [amountRaw, setAmountRaw] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState(todayKey());
   const [error, setError] = useState<string | null>(null);
 
+  // Resets the form to match whatever is being opened (blank for "add", populated
+  // for "edit"). Deliberate: this synchronizes local form state with the `transaction`
+  // prop whenever the sheet opens, which is exactly what an effect is for.
   useEffect(() => {
     if (!open) return;
     if (transaction) {
@@ -73,11 +71,11 @@ export function TransactionFormSheet({
   function handleSubmit() {
     const amount = parseAmountInput(amountRaw);
     if (amount <= 0) {
-      setError(isQuickAdd ? t.quickAdd.errorAmount : t.transactionForm.errorAmount);
+      setError(t.transactionForm.errorAmount);
       return;
     }
     if (!categoryId) {
-      setError(isQuickAdd ? t.quickAdd.errorCategory : t.transactionForm.errorCategory);
+      setError(t.transactionForm.errorCategory);
       return;
     }
     if (!date) {
@@ -88,18 +86,11 @@ export function TransactionFormSheet({
     onOpenChange(false);
   }
 
-  function switchToFull() {
-    if (!isQuickAdd) return;
-    onExpand?.();
-  }
-
-  const sheetTitle = isQuickAdd
-    ? t.quickAdd.title
-    : isEditing
-      ? t.transactionForm.editTitle
-      : type === "income"
-        ? t.transactionForm.addIncomeTitle
-        : t.transactionForm.addExpenseTitle;
+  const sheetTitle = isEditing
+    ? t.transactionForm.editTitle
+    : type === "income"
+      ? t.transactionForm.addIncomeTitle
+      : t.transactionForm.addExpenseTitle;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={sheetTitle}>
@@ -133,7 +124,7 @@ export function TransactionFormSheet({
 
         <div>
           <label htmlFor="amount" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {isQuickAdd ? t.quickAdd.amountLabel : t.transactionForm.amountLabel}
+            {t.transactionForm.amountLabel}
           </label>
           <div className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-3 transition-colors focus-within:border-neutral-900 dark:border-neutral-800 dark:focus-within:border-white">
             <input
@@ -158,37 +149,24 @@ export function TransactionFormSheet({
 
         <div>
           <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {isQuickAdd ? t.quickAdd.categoryLabel : t.transactionForm.categoryLabel}
+            {t.transactionForm.categoryLabel}
           </span>
           <CategoryPicker categories={categoriesForType} selectedId={categoryId} onSelect={setCategoryId} />
         </div>
 
-        {isQuickAdd && onExpand && (
-          <button
-            type="button"
-            onClick={switchToFull}
-            className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
-          >
-            <Settings2 size={15} strokeWidth={1.8} aria-hidden="true" />
-            {t.quickAdd.fullInput}
-          </button>
-        )}
-
-        {!isQuickAdd && (
-          <div>
-            <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              {t.transactionForm.dateLabel}
-            </label>
-            <input
-              id="date"
-              type="date"
-              value={date}
-              max={todayKey()}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
-            />
-          </div>
-        )}
+        <div>
+          <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            {t.transactionForm.dateLabel}
+          </label>
+          <input
+            id="date"
+            type="date"
+            value={date}
+            max={todayKey()}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+          />
+        </div>
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
@@ -206,15 +184,11 @@ export function TransactionFormSheet({
             </Button>
           )}
           <Button type="button" onClick={handleSubmit} className="flex-1">
-            {isQuickAdd
-              ? type === "income"
-                ? t.quickAdd.addIncome
-                : t.quickAdd.addExpense
-              : isEditing
-                ? t.transactionForm.saveChanges
-                : type === "income"
-                  ? t.transactionForm.addIncomeCta
-                  : t.transactionForm.addExpenseCta}
+            {isEditing
+              ? t.transactionForm.saveChanges
+              : type === "income"
+                ? t.transactionForm.addIncomeCta
+                : t.transactionForm.addExpenseCta}
           </Button>
         </div>
       </div>
