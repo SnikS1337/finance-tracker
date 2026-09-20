@@ -8,8 +8,8 @@ import { useToast } from "../../hooks/useToast";
 import { t } from "../../i18n";
 
 export function AppShell() {
-  const { state, openAdd, close, setMode } = useTransactionSheet();
-  const { categories, addTransaction, editTransaction, removeTransaction, undoDelete } = useAppData();
+  const { state, openAdd, close } = useTransactionSheet();
+  const { categories, addTransaction, editTransaction, removeTransaction, restoreTransaction } = useAppData();
   const { showToast } = useToast();
 
   return (
@@ -26,8 +26,6 @@ export function AppShell() {
         categories={categories}
         transaction={state.transaction}
         initialType={state.initialType}
-        mode={state.mode}
-        onExpand={() => setMode("full")}
         onSubmit={(input) => {
           if (state.transaction) {
             editTransaction(state.transaction.id, input);
@@ -38,8 +36,13 @@ export function AppShell() {
           }
         }}
         onDelete={(id) => {
+          const toRestore = state.transaction;
           removeTransaction(id);
-          showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: undoDelete });
+          showToast({
+            message: t.toasts.transactionDeleted,
+            actionLabel: t.toasts.undo,
+            onAction: () => toRestore && restoreTransaction(toRestore),
+          });
         }}
       />
     </div>
