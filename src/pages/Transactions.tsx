@@ -16,7 +16,7 @@ import { t } from "../i18n";
 type SortOption = "newest" | "oldest" | "largest" | "smallest";
 
 export default function Transactions() {
-  const { transactions, categories, removeTransaction, undoDelete } = useAppData();
+  const { transactions, categories, removeTransaction, restoreTransaction } = useAppData();
   const { openAdd, openEdit } = useTransactionSheet();
   const { showToast } = useToast();
   const period = usePeriod("thisMonth");
@@ -137,7 +137,7 @@ export default function Transactions() {
           onSelect={openEdit}
           onDelete={(tx) => {
             removeTransaction(tx.id);
-            showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: undoDelete });
+            showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: () => restoreTransaction(tx) });
           }}
         />
       )}
