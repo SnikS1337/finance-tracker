@@ -17,6 +17,10 @@ export function Sheet({ open, onOpenChange, title, children }: Props) {
 
   useEffect(() => {
     if (!open) {
+      // Resets the keyboard-avoidance inset when the sheet closes; this
+      // mirrors the visualViewport (an external system), which is exactly
+      // what an effect is for.
+      // oxlint-disable-next-line react/set-state-in-effect
       setKeyboardInset(0);
       return;
     }
