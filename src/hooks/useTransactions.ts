@@ -1,11 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Transaction, NewTransactionInput } from "../types";
 import * as storage from "../lib/storage";
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => storage.getTransactions());
-  // Holds the most recently deleted transaction so the toast's "Undo" can restore it.
-  const lastDeleted = useRef<Transaction | null>(null);
 
   const refresh = useCallback(() => setTransactions(storage.getTransactions()), []);
 
@@ -27,21 +25,29 @@ export function useTransactions() {
 
   const removeTransaction = useCallback(
     (id: string) => {
-      const found = transactions.find((t) => t.id === id) ?? null;
-      lastDeleted.current = found;
       storage.deleteTransaction(id);
       refresh();
     },
-    [transactions, refresh]
+    [refresh]
   );
 
-  const undoDelete = useCallback(() => {
-    const tx = lastDeleted.current;
-    if (!tx) return;
-    storage.createTransaction(tx);
-    lastDeleted.current = null;
-    refresh();
-  }, [refresh]);
+  /**
+   * Restores an exact, previously-deleted transaction (same id/timestamps),
+   * for a toast's "Undo" action. Callers must capture the specific
+   * transaction they just deleted and pass it back here directly, rather
+   * than relying on a single shared "last deleted" slot: with swipe-to-delete
+   * it's easy to delete more than one transaction before dismissing/acting on
+   * an earlier toast, and several undo toasts can be visible at once, each
+   * needing to restore *its own* transaction, not just whichever was deleted
+   * most recently.
+   */
+  const restoreTransaction = useCallback(
+    (tx: Transaction) => {
+      storage.createTransaction(tx);
+      refresh();
+    },
+    [refresh]
+  );
 
   const reassignCategory = useCallback(
     (fromCategoryId: string, toCategoryId: string) => {
@@ -53,5 +59,5 @@ export function useTransactions() {
     [refresh]
   );
 
-  return { transactions, addTransaction, editTransaction, removeTransaction, undoDelete, reassignCategory, refresh };
+  return { transactions, addTransaction, editTransaction, removeTransaction, restoreTransaction, reassignCategory, refresh };
 }
