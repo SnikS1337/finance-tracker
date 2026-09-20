@@ -29,3 +29,15 @@ export function formatAmountInput(raw: string): string {
   if (!value) return "";
   return value.toLocaleString("ru-RU");
 }
+
+/**
+ * Rough "≈" display-only equivalent in RUB, e.g. "≈ 92 000 ₽". Never used for
+ * anything but on-screen display — VND stays the only currency actually
+ * stored or calculated with.
+ */
+export function formatRubEquivalent(vndAmount: number, vndToRubRate: number): string {
+  const safeAmount = Number.isFinite(vndAmount) ? vndAmount : 0;
+  const safeRate = Number.isFinite(vndToRubRate) && vndToRubRate > 0 ? vndToRubRate : 0;
+  const rubles = Math.round(Math.abs(safeAmount) * safeRate);
+  return `≈ ${rubles.toLocaleString("ru-RU")} ₽`;
+}
