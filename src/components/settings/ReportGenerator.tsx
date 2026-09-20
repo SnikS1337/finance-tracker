@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import { PeriodSelector } from "../dashboard/PeriodSelector";
 import { usePeriod } from "../../hooks/usePeriod";
 import { useAppData } from "../../hooks/useAppData";
+import { useToast } from "../../hooks/useToast";
 import { formatCurrency } from "../../lib/currency";
 import { formatRangeLabel } from "../../lib/date-utils";
 import {
@@ -20,6 +21,7 @@ import { t } from "../../i18n";
 
 export function ReportGenerator() {
   const { transactions, categories } = useAppData();
+  const { showToast } = useToast();
   const period = usePeriod("thisMonth");
   const [dark, setDark] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -44,7 +46,7 @@ export function ReportGenerator() {
 
       await new Promise<void>((resolve, reject) => {
         image.onload = () => resolve();
-        image.onerror = () => reject(new Error("Не удалось подготовить SVG для PNG"));
+        image.onerror = () => reject(new Error(t.report.generateError));
         image.src = svgDataUrl;
       });
 
@@ -56,7 +58,7 @@ export function ReportGenerator() {
       canvas.height = Math.round(height * scale);
 
       const context = canvas.getContext("2d");
-      if (!context) throw new Error("Не удалось создать canvas");
+      if (!context) throw new Error(t.report.generateError);
 
       context.scale(scale, scale);
       context.drawImage(image, 0, 0, width, height);
@@ -66,6 +68,8 @@ export function ReportGenerator() {
       a.href = dataUrl;
       a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.png`;
       a.click();
+    } catch {
+      showToast({ message: t.report.generateError, variant: "error" });
     } finally {
       setGenerating(false);
     }
