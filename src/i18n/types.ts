@@ -86,18 +86,6 @@ export interface Dictionary {
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
   };
-  quickAdd: {
-    title: string;
-    expense: string;
-    income: string;
-    amountLabel: string;
-    categoryLabel: string;
-    addExpense: string;
-    addIncome: string;
-    fullInput: string;
-    errorAmount: string;
-    errorCategory: string;
-  };
   transactionForm: {
     addExpenseTitle: string;
     addIncomeTitle: string;
@@ -223,6 +211,7 @@ export interface Dictionary {
     footer: string;
     downloadPng: string;
     generating: string;
+    generateError: string;
   };
   onboarding: {
     title: string;
