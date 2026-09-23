@@ -21,7 +21,9 @@ export default defineConfig({
         short_name: 'Финансы',
         description: 'Быстрый, приватный офлайн-трекер личных финансов.',
         theme_color: '#0ea5e9',
-        background_color: '#ffffff',
+        // Matches the startup screen / app background, so the installed-PWA
+        // splash doesn't flash white before the app paints.
+        background_color: '#f7f8fa',
         display: 'standalone',
         start_url: base,
         lang: 'ru',
