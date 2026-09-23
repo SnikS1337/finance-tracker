@@ -1,6 +1,14 @@
 import type { Dictionary } from "./types";
 
 export const ru: Dictionary = {
+  app: {
+    loadingSection: "Загружаем раздел…",
+    chunkErrorTitle: "Не удалось загрузить раздел",
+    chunkErrorOffline: "Нет подключения к интернету, а этот раздел ещё не сохранён для офлайн-режима. Подключитесь к сети и повторите.",
+    chunkErrorGeneric: "Соединение прервалось во время загрузки. Попробуйте ещё раз.",
+    chartUnavailable: "График сейчас недоступен",
+    retry: "Повторить",
+  },
   nav: {
     dashboard: "Обзор",
     transactions: "Операции",
@@ -37,10 +45,12 @@ export const ru: Dictionary = {
     from: "С",
     to: "По",
     invalidRange: "Дата начала позже даты окончания — данные не показаны, пока это не исправлено.",
+    groupLabel: "Период",
   },
   dashboard: {
     title: "Обзор",
     subtitle: "Что происходит с вашими финансами?",
+    periodCaption: "Сводка за текущий месяц",
     emptyTitle: "Пока нет операций",
     emptyDescription: "Начните учёт финансов, добавив первую операцию.",
     addTransactionCta: "+ Добавить операцию",
@@ -82,6 +92,9 @@ export const ru: Dictionary = {
     emptyDescriptionNoData: "Начните учёт финансов, добавив первую операцию.",
     emptyTitleNoMatch: "Ничего не найдено",
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
+    deleteAction: "Удалить операцию",
+    deleteConfirmTitle: "Удалить операцию?",
+    deleteConfirmDescription: "Сразу после удаления её можно будет вернуть кнопкой «Отменить».",
   },
   transactionForm: {
     addExpenseTitle: "Новый расход",

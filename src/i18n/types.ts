@@ -4,6 +4,14 @@
  * swapping the export in `index.ts` — no component changes required.
  */
 export interface Dictionary {
+  app: {
+    loadingSection: string;
+    chunkErrorTitle: string;
+    chunkErrorOffline: string;
+    chunkErrorGeneric: string;
+    chartUnavailable: string;
+    retry: string;
+  };
   nav: {
     dashboard: string;
     transactions: string;
@@ -40,10 +48,14 @@ export interface Dictionary {
     from: string;
     to: string;
     invalidRange: string;
+    /** Accessible name of the period preset group. */
+    groupLabel: string;
   };
   dashboard: {
     title: string;
     subtitle: string;
+    /** Which period the dashboard summarises (it is fixed to the current month). */
+    periodCaption: string;
     emptyTitle: string;
     emptyDescription: string;
     addTransactionCta: string;
@@ -85,6 +97,9 @@ export interface Dictionary {
     emptyDescriptionNoData: string;
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
+    deleteAction: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDescription: string;
   };
   transactionForm: {
     addExpenseTitle: string;
