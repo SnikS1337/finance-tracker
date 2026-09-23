@@ -5,8 +5,7 @@ import { usePeriod } from "../hooks/usePeriod";
 import { PeriodSelector } from "../components/dashboard/PeriodSelector";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
-import { SpendingChart } from "../components/dashboard/SpendingChart";
-import { CategoryDonut } from "../components/dashboard/CategoryDonut";
+import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { DayHighlightCards } from "../components/analytics/DayHighlightCards";
 import { PeriodComparison } from "../components/analytics/PeriodComparison";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -32,10 +31,12 @@ export default function Analytics() {
   const period = usePeriod("thisMonth");
   const navigate = useNavigate();
 
-  const isValidRange = !isNaN(period.range.start.getTime()) && !isNaN(period.range.end.getTime());
+  const { range } = period;
+  const isValidRange = !isNaN(range.start.getTime()) && !isNaN(range.end.getTime());
 
+  // Depends on the memoized `range`, not the `period` object (a new object every
+  // render), so the full analytics recalculation only runs when inputs change.
   const data = useMemo(() => {
-    const { range } = period;
     const previousRange = isValidRange ? getPreviousRange(range) : range;
     const expenses = calculateTotalExpenses(transactions, range);
     const previousExpenses = calculateTotalExpenses(transactions, previousRange);
@@ -56,7 +57,7 @@ export default function Analytics() {
       previousRange,
       percentageChange: calculatePercentageChange(expenses, previousExpenses),
     };
-  }, [transactions, period, isValidRange]);
+  }, [transactions, range, isValidRange]);
 
   if (transactions.length === 0) {
     return (

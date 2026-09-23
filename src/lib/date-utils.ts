@@ -12,7 +12,6 @@ import {
   addDays,
   eachDayOfInterval,
   isWithinInterval,
-  parse,
 } from "date-fns";
 import { dateLocale, t } from "../i18n";
 
@@ -28,8 +27,24 @@ export function toDateKey(date: Date): string {
   return format(date, DATE_FORMAT);
 }
 
+const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Parses a "yyyy-MM-dd" key as a local date. Hand-rolled instead of date-fns
+ * `parse`, which drags its whole token-parser table (~17 KB) into the initial
+ * bundle for this single fixed format. Same contract: malformed or impossible
+ * dates (e.g. "2026-02-30") produce an Invalid Date.
+ */
 export function fromDateKey(key: string): Date {
-  return parse(key, DATE_FORMAT, new Date());
+  const match = DATE_KEY_RE.exec(key);
+  if (!match) return new Date(NaN);
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day);
+  // new Date() silently rolls over out-of-range parts; reject those like `parse` does.
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return new Date(NaN);
+  return date;
 }
 
 export function todayKey(): string {

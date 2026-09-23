@@ -1,22 +1,33 @@
-import { Outlet } from "react-router-dom";
+import { Suspense } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
 import { TransactionFormSheet } from "../transactions/TransactionFormSheet";
 import { useTransactionSheet } from "../../hooks/useTransactionSheet";
 import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";
+import { ChunkErrorBoundary } from "../ui/ChunkErrorBoundary";
+import { PageFallback } from "../ui/PageFallback";
 import { t } from "../../i18n";
 
 export function AppShell() {
   const { state, openAdd, close } = useTransactionSheet();
   const { categories, addTransaction, editTransaction, removeTransaction, restoreTransaction } = useAppData();
   const { showToast } = useToast();
+  const { pathname } = useLocation();
+
 
   return (
     <div className="min-h-screen md:pl-60">
       <Sidebar onAdd={() => openAdd()} />
       <main className="mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
-        <Outlet />
+        {/* Keyed by route: an error on one page (e.g. a chunk that failed to load
+            offline) must not stick around after navigating to another page. */}
+        <ChunkErrorBoundary key={pathname}>
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
       <BottomNav onAdd={() => openAdd()} />
 

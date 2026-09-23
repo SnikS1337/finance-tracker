@@ -100,6 +100,8 @@ export default {
         "popover-in": "popover-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both",
         "popover-out": "popover-out 0.12s cubic-bezier(0.7, 0, 0.84, 0) both",
         "card-in": "card-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both",
+        // Loading placeholders: invisible for the first 250ms, so fast loads never flash a skeleton.
+        "fade-in-delayed": "fade-in 0.3s ease-out 0.25s both",
       },
     },
   },

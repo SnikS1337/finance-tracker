@@ -26,7 +26,7 @@ export function PeriodSelector({ value, onChange, customStart, customEnd, onCust
   const invalidRange = value === "custom" && customStart > customEnd;
 
   return (
-    <div className="animate-card-in motion-reduce:animate-none">
+    <div role="group" aria-label={t.period.groupLabel} className="animate-card-in motion-reduce:animate-none">
       <div className="flex flex-wrap gap-2 pb-1">
         {PRESETS.map((p) => (
           <button

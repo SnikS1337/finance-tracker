@@ -1,5 +1,4 @@
-import { useRef, useState } from "react";
-import { toSvg } from "html-to-image";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { PeriodSelector } from "../dashboard/PeriodSelector";
@@ -27,6 +26,12 @@ export function ReportGenerator() {
   const [generating, setGenerating] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // Warm the PNG renderer once the report card is actually on screen (not at
+  // app start), so "Download PNG" also works if the connection drops afterwards.
+  useEffect(() => {
+    import("html-to-image").catch(() => undefined);
+  }, []);
+
   const { range } = period;
   const income = calculateTotalIncome(transactions, range);
   const expenses = calculateTotalExpenses(transactions, range);
@@ -40,6 +45,11 @@ export function ReportGenerator() {
     if (!reportRef.current) return;
     setGenerating(true);
     try {
+      // Loaded on demand: html-to-image is only needed at the moment a PNG is
+      // generated, so it stays out of the Settings chunk. (It's precached by the
+      // service worker, so this still works offline in the installed app.)
+      const { toSvg } = await import("html-to-image");
+      if (!reportRef.current) return;
       const svgDataUrl = await toSvg(reportRef.current);
       const image = new Image();
       image.decoding = "async";

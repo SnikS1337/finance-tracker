@@ -1,15 +1,12 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
-import { usePeriod } from "../hooks/usePeriod";
-import { PeriodSelector } from "../components/dashboard/PeriodSelector";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
-import { SpendingChart } from "../components/dashboard/SpendingChart";
-import { CategoryDonut } from "../components/dashboard/CategoryDonut";
+import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { useTransactionSheet } from "../hooks/useTransactionSheet";
-import { useNavigate } from "react-router-dom";
 import {
   calculateTotalIncome,
   calculateTotalExpenses,
@@ -20,18 +17,23 @@ import {
   calculateExpenseCategoryTotals,
 } from "../lib/calculations";
 import { buildSpendingSeries } from "../lib/chart-data";
-import { isDateKeyInRange } from "../lib/date-utils";
+import { getPresetRange, isDateKeyInRange } from "../lib/date-utils";
 import { t } from "../i18n";
 
+/**
+ * The dashboard is a fixed "this month" overview. Choosing other periods lives
+ * in Analytics, which has the full PeriodSelector.
+ */
 export default function Dashboard() {
   const { transactions, categories } = useAppData();
-  const period = usePeriod("thisMonth");
   const { openAdd } = useTransactionSheet();
   const navigate = useNavigate();
 
-  const stats = useMemo(() => {
-    const { range } = period;
-    return {
+  // Same lifetime as the old `usePeriod("thisMonth")` range: computed once per visit.
+  const range = useMemo(() => getPresetRange("thisMonth"), []);
+
+  const stats = useMemo(
+    () => ({
       income: calculateTotalIncome(transactions, range),
       expenses: calculateTotalExpenses(transactions, range),
       balance: calculateBalance(transactions, range),
@@ -41,8 +43,9 @@ export default function Dashboard() {
       transactionCount: transactions.filter((tx) => isDateKeyInRange(tx.date, range)).length,
       categoryTotals: calculateExpenseCategoryTotals(transactions, range),
       series: buildSpendingSeries(transactions, range),
-    };
-  }, [transactions, period]);
+    }),
+    [transactions, range]
+  );
 
   if (transactions.length === 0) {
     return (
@@ -57,19 +60,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.subtitle}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.periodCaption}</p>
       </div>
-
-      <PeriodSelector
-        value={period.preset}
-        onChange={period.setPreset}
-        customStart={period.customStart}
-        customEnd={period.customEnd}
-        onCustomChange={period.setCustomRange}
-      />
 
       <SummaryCards income={stats.income} expenses={stats.expenses} balance={stats.balance} />
 
