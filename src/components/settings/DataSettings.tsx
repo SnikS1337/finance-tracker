@@ -31,8 +31,7 @@ export function DataSettings() {
 
   return (
     <Card className="space-y-3">
-      <h3 className="text-sm font-semibold">{t.settings.dataSection}</h3>
-
+      {/* No card title: the Settings page already heads this section with the same text. */}
       <div className="grid grid-cols-2 gap-2">
         <Button
           variant="secondary"
@@ -50,6 +49,7 @@ export function DataSettings() {
         <Button
           variant="secondary"
           size="sm"
+          className="col-span-2"
           onClick={() => {
             downloadCSV(storage.getTransactions(), categories);
             showToast({ message: t.toasts.csvExported });
@@ -57,7 +57,11 @@ export function DataSettings() {
         >
           {t.data.exportCsv}
         </Button>
-        <Button variant="danger" size="sm" onClick={() => setConfirmDeleteAll(true)}>
+      </div>
+
+      {/* Destructive action on its own full-width row, visually separated from exports. */}
+      <div className="border-t border-neutral-100 pt-3 dark:border-neutral-800">
+        <Button variant="danger" size="sm" className="w-full" onClick={() => setConfirmDeleteAll(true)}>
           {t.data.deleteAll}
         </Button>
       </div>

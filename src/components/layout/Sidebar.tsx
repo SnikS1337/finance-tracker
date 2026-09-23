@@ -1,6 +1,7 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { LayoutDashboard, Receipt, BarChart3, Settings as SettingsIcon, Plus, Wallet } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { scrollToTopSmooth } from "../../lib/scroll";
 import { t } from "../../i18n";
 
 const NAV_ITEMS = [
@@ -11,6 +12,7 @@ const NAV_ITEMS = [
 ];
 
 export function Sidebar({ onAdd }: { onAdd: () => void }) {
+  const { pathname } = useLocation();
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-neutral-200 bg-white px-4 py-6 dark:border-neutral-800 dark:bg-surface-dark md:flex">
       <div className="mb-8 flex items-center gap-2 px-2">
@@ -29,6 +31,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
             key={to}
             to={to}
             end={to === "/"}
+            onClick={() => pathname === to && scrollToTopSmooth()}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",

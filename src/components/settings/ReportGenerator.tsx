@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { PeriodSelector } from "../dashboard/PeriodSelector";
@@ -17,6 +17,42 @@ import {
 } from "../../lib/calculations";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
+
+const REPORT_WIDTH = 360;
+
+/** Shows `children` (laid out at a fixed `width`) scaled down to fit narrower containers. */
+function FitToWidth({ width, children }: { width: number; children: ReactNode }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+
+  // Written straight to the DOM (no state): resizing never re-renders the report.
+  useLayoutEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    const update = () => {
+      const scale = Math.min(1, outer.clientWidth / width);
+      inner.style.transform = scale < 1 ? `scale(${scale})` : "";
+      outer.style.height = `${Math.ceil(inner.offsetHeight * scale)}px`;
+    };
+    update();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(outer);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [width]);
+
+  return (
+    <div ref={outerRef} className="flex justify-center overflow-hidden">
+      <div ref={innerRef} className="shrink-0 origin-top" style={{ width }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function ReportGenerator() {
   const { transactions, categories } = useAppData();
@@ -100,11 +136,15 @@ export function ReportGenerator() {
         {t.report.darkVersion}
       </label>
 
-      <div className="overflow-x-auto">
+      {/* The PNG is always rendered from a fixed 360px layout; on narrower
+          screens the on-screen preview is scaled down to fit instead of being
+          cropped behind a horizontal scroll. The scale lives on a wrapper, so
+          the captured node (reportRef) and the exported image are unaffected. */}
+      <FitToWidth width={REPORT_WIDTH}>
         <div
           ref={reportRef}
           className={cn(
-            "mx-auto flex w-[360px] flex-col gap-5 rounded-3xl p-7 font-sans",
+            "flex w-[360px] flex-col gap-5 rounded-3xl p-7 font-sans",
             dark ? "bg-neutral-950 text-white" : "bg-gradient-to-b from-neutral-50 to-white text-neutral-900"
           )}
         >
@@ -118,19 +158,19 @@ export function ReportGenerator() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.expenses}</p>
-              <p className="mt-0.5 text-xl font-bold">{formatCurrency(expenses)}</p>
+              <p className="mt-0.5 text-lg font-bold leading-tight tabular-nums">{formatCurrency(expenses)}</p>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.income}</p>
-              <p className="mt-0.5 text-xl font-bold text-emerald-500">{formatCurrency(income)}</p>
+              <p className="mt-0.5 text-lg font-bold leading-tight tabular-nums text-emerald-500">{formatCurrency(income)}</p>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.balance}</p>
-              <p className="mt-0.5 text-lg font-bold">{formatCurrency(balance)}</p>
+              <p className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(balance)}</p>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.avgPerDay}</p>
-              <p className="mt-0.5 text-lg font-bold">{formatCurrency(avg)}</p>
+              <p className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(avg)}</p>
             </div>
           </div>
 
@@ -167,7 +207,7 @@ export function ReportGenerator() {
 
           <p className="mt-2 text-center text-[10px] tracking-wide text-neutral-400">{t.report.footer}</p>
         </div>
-      </div>
+      </FitToWidth>
 
       <Button onClick={handleDownload} disabled={generating} className="w-full">
         {generating ? t.report.generating : t.report.downloadPng}

@@ -1,6 +1,7 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { LayoutDashboard, Receipt, BarChart3, Settings as SettingsIcon, Plus } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { scrollToTopSmooth } from "../../lib/scroll";
 import { t } from "../../i18n";
 
 const NAV_ITEMS = [
@@ -13,11 +14,14 @@ const NAV_ITEMS = [
 export function BottomNav({ onAdd }: { onAdd: () => void }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-neutral-800 dark:bg-surface-dark/95 md:hidden">
-      <div className="relative mx-auto flex max-w-lg items-center justify-around px-2">
+      {/* Five equal columns (the middle one reserved for "+") so every tab sits at
+          a fixed, symmetric position. `justify-around` spaced items by their label
+          widths, so "Операции" ended up farther from "+" than "Аналитика". */}
+      <div className="relative mx-auto grid max-w-lg grid-cols-5 items-center px-2">
         {NAV_ITEMS.slice(0, 2).map((item) => (
           <NavItem key={item.to} {...item} />
         ))}
-        <div className="w-14" aria-hidden />
+        <div aria-hidden />
         {NAV_ITEMS.slice(2).map((item) => (
           <NavItem key={item.to} {...item} />
         ))}
@@ -34,20 +38,23 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
 }
 
 function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: typeof LayoutDashboard }) {
+  const { pathname } = useLocation();
   return (
     <NavLink
       to={to}
       end={to === "/"}
+      // Tapping the tab you're already on scrolls it back to the top, like native tab bars.
+      onClick={() => pathname === to && scrollToTopSmooth()}
       aria-label={label}
       className={({ isActive }) =>
         cn(
-          "flex flex-col items-center gap-0.5 px-3 py-2 text-[11px] font-medium transition-colors duration-200",
+          "flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 text-[11px] font-medium transition-colors duration-200",
           isActive ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-neutral-500"
         )
       }
     >
       <Icon size={20} />
-      {label}
+      <span className="max-w-full truncate">{label}</span>
     </NavLink>
   );
 }

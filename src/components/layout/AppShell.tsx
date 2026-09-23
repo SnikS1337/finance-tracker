@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useLayoutEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
@@ -16,6 +16,12 @@ export function AppShell() {
   const { showToast } = useToast();
   const { pathname } = useLocation();
 
+  // Each tab opens at the top. Without this the window keeps the previous tab's
+  // scroll offset (it's one shared document), so switching from a scrolled
+  // Transactions list dropped you into the middle of Settings.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen md:pl-60">
