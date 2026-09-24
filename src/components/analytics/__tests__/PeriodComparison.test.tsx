@@ -20,3 +20,20 @@ describe("PeriodComparison", () => {
     act(() => root.unmount());
   });
 });
+
+describe("FitText", () => {
+  it("sizes the font from the text length and the box width (CSS container units)", async () => {
+    const { FitText, estimateWidthEm } = await import("../../ui/FitText");
+    expect(estimateWidthEm("1 000")).toBeCloseTo(4 * 0.62 + 0.3);
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    act(() => root.render(<FitText>{"678 678 678 678 ₫"}</FitText>));
+    const outer = container.firstElementChild as HTMLElement;
+    const inner = outer.firstElementChild as HTMLElement;
+    expect(outer.className).toContain("[container-type:inline-size]");
+    // jsdom may pre-compute the calc(); the container unit is what matters.
+    expect(inner.style.fontSize).toMatch(/cqi/);
+    expect(inner.textContent).toBe("678 678 678 678 ₫");
+    act(() => root.unmount());
+  });
+});

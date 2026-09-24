@@ -17,13 +17,11 @@ interface Props {
  * One row per figure (label left, amount right) rather than three narrow
  * columns: long amounts get most of the width and shrink to fit if needed.
  */
-function Row({ label, children, emphasis }: { label: ReactNode; children: ReactNode; emphasis?: boolean }) {
+function Row({ label, children, emphasis }: { label: ReactNode; children: string; emphasis?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="min-w-0 text-xs text-neutral-500 dark:text-neutral-400">{label}</span>
-      <FitText className={cn("max-w-[65%] shrink-0 text-right tabular-nums", emphasis ? "font-semibold" : "font-medium")}>
-        {children}
-      </FitText>
+      <span className="max-w-[48%] shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{label}</span>
+      <FitText className={cn("flex-1 text-right tabular-nums", emphasis ? "font-semibold" : "font-medium")}>{children}</FitText>
     </div>
   );
 }
@@ -51,8 +49,7 @@ export function PeriodComparison({ currentLabel, previousLabel, current, previou
               </>
             }
           >
-            {diff > 0 ? "+" : ""}
-            {formatCurrency(diff)}
+            {(diff > 0 ? "+" : "") + formatCurrency(diff)}
           </Row>
         </div>
       </div>

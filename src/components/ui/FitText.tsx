@@ -1,68 +1,47 @@
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
+/** Approximate width of a string in `em` (digits and signs ≈ 0.6em, spaces ≈ 0.3em). */
+export function estimateWidthEm(text: string): number {
+  let em = 0;
+  for (const ch of text) em += ch === " " || ch === " " || ch === " " ? 0.3 : 0.62;
+  return em;
+}
+
 /**
- * One line of text (typically an amount) that shrinks its font to fit the
- * available width instead of wrapping or overflowing — "678 678 678 678 ₫"
- * stays on one line in a narrow card. Never below `minScale` of the normal
- * size; past that it's cut with an ellipsis. Measured after every render and
- * whenever the box is resized.
+ * One line of text (typically an amount) whose font shrinks to fit the width
+ * of its box instead of wrapping or being cut — "678 678 678 678 ₫" stays
+ * whole in a narrow card. Pure CSS: the box is a size container and the font
+ * size is `min(1em, 100cqi / estimated width)`, so it's right on the very first
+ * paint, on rotation/resize, and needs no measuring. Never below `minScale` of
+ * the normal size (then an ellipsis). Browsers without container units simply
+ * keep the normal size.
+ *
+ * `text` is the string used for the estimate; pass it when `children` isn't a
+ * plain string (e.g. an AnimatedNumber — use its final value).
  */
 export function FitText({
+  text,
   children,
   className,
-  minScale = 0.55,
+  minScale = 0.5,
 }: {
-  children: ReactNode;
+  text?: string;
+  children?: ReactNode;
   className?: string;
   minScale?: number;
 }) {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  const fit = () => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.fontSize = "";
-    const available = el.clientWidth;
-    const needed = el.scrollWidth;
-    if (available <= 0 || needed <= available) return;
-    const base = parseFloat(getComputedStyle(el).fontSize);
-    if (!Number.isFinite(base) || base <= 0) return;
-    const size = Math.max(base * minScale, Math.floor(((base * available) / needed) * 10) / 10);
-    el.style.fontSize = `${size}px`;
-  };
-
-  // Every render: the text may have changed (e.g. a number gliding to a new value).
-  useLayoutEffect(fit);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const cleanups: Array<() => void> = [];
-    if (typeof ResizeObserver !== "undefined") {
-      let lastWidth = el.clientWidth;
-      const resize = new ResizeObserver(() => {
-        // Only width matters; ignore the height change caused by fitting itself.
-        if (el.clientWidth === lastWidth) return;
-        lastWidth = el.clientWidth;
-        fit();
-      });
-      resize.observe(el);
-      cleanups.push(() => resize.disconnect());
-    }
-    // Text updated by a child alone (AnimatedNumber re-renders without this component).
-    if (typeof MutationObserver !== "undefined") {
-      const mutation = new MutationObserver(fit);
-      mutation.observe(el, { characterData: true, childList: true, subtree: true });
-      cleanups.push(() => mutation.disconnect());
-    }
-    return () => cleanups.forEach((c) => c());
-    // oxlint-disable-next-line react/exhaustive-deps
-  }, []);
-
+  const content = text ?? (typeof children === "string" ? children : "");
+  // A little slack so bold/semibold glyphs never touch the edge.
+  const em = Math.max(1, estimateWidthEm(content) * 1.06);
   return (
-    <span ref={ref} className={cn("block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap", className)}>
-      {children}
+    <span className={cn("block min-w-0 [container-type:inline-size]", className)}>
+      <span
+        className="block overflow-hidden text-ellipsis whitespace-nowrap"
+        style={{ fontSize: `max(${minScale}em, min(1em, calc(100cqi / ${em.toFixed(2)})))` }}
+      >
+        {children ?? text}
+      </span>
     </span>
   );
 }

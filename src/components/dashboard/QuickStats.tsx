@@ -23,7 +23,7 @@ export function QuickStats({ averagePerDay, medianPerDay, transactionCount, spen
       {items.map((item) => (
         <Card key={item.label} className="min-w-0 !p-3.5">
           <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{item.label}</p>
-          <FitText className="mt-1 text-base font-semibold tabular-nums">
+          <FitText text={item.format(item.value)} className="mt-1 text-base font-semibold tabular-nums">
             <AnimatedNumber value={item.value} format={item.format} />
           </FitText>
         </Card>
