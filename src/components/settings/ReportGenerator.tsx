@@ -1,50 +1,95 @@
-import { useRef, useState } from "react";
-import { toSvg } from "html-to-image";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Card } from "../ui/Card";
+import { FitText } from "../ui/FitText";
 import { Button } from "../ui/Button";
-import { PeriodSelector } from "../dashboard/PeriodSelector";
+import { PeriodSelector } from "../period/PeriodSelector";
 import { usePeriod } from "../../hooks/usePeriod";
 import { useAppData } from "../../hooks/useAppData";
+import { useToast } from "../../hooks/useToast";
 import { formatCurrency } from "../../lib/currency";
 import { formatRangeLabel } from "../../lib/date-utils";
-import {
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  calculateBalance,
-  calculateAverageDailyExpense,
-  calculateMedianDailyExpense,
-  calculateExpenseCategoryTotals,
-} from "../../lib/calculations";
+import { summarize } from "../../lib/calculations";
+import { reportFileName, saveFile } from "../../lib/export";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 
+const REPORT_WIDTH = 360;
+
+/** Shows `children` (laid out at a fixed `width`) scaled down to fit narrower containers. */
+function FitToWidth({ width, children }: { width: number; children: ReactNode }) {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+
+  // Written straight to the DOM (no state): resizing never re-renders the report.
+  useLayoutEffect(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    const update = () => {
+      const scale = Math.min(1, outer.clientWidth / width);
+      inner.style.transform = scale < 1 ? `scale(${scale})` : "";
+      outer.style.height = `${Math.ceil(inner.offsetHeight * scale)}px`;
+    };
+    update();
+
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(outer);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, [width]);
+
+  return (
+    // items-start: the inner box keeps its own height. With the default
+    // `stretch` it took the outer box's (scaled, smaller) height, which then
+    // shrank the next measurement — the preview collapsed to a sliver.
+    <div ref={outerRef} className="flex items-start justify-center overflow-hidden">
+      <div ref={innerRef} className="shrink-0 origin-top" style={{ width }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function ReportGenerator() {
   const { transactions, categories } = useAppData();
+  const { showToast } = useToast();
   const period = usePeriod("thisMonth");
   const [dark, setDark] = useState(false);
   const [generating, setGenerating] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // Warm the PNG renderer once the report card is actually on screen (not at
+  // app start), so "Download PNG" also works if the connection drops afterwards.
+  useEffect(() => {
+    import("html-to-image").catch(() => undefined);
+  }, []);
+
   const { range } = period;
-  const income = calculateTotalIncome(transactions, range);
-  const expenses = calculateTotalExpenses(transactions, range);
-  const balance = calculateBalance(transactions, range);
-  const avg = calculateAverageDailyExpense(transactions, range);
-  const median = calculateMedianDailyExpense(transactions, range);
-  const topCategories = calculateExpenseCategoryTotals(transactions, range).slice(0, 4);
+  const summary = useMemo(() => summarize(transactions, range), [transactions, range]);
+  const { income, expenses, balance } = summary;
+  const avg = summary.averagePerDay;
+  const median = summary.medianPerDay;
+  const topCategories = summary.expenseByCategory.slice(0, 4);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   async function handleDownload() {
     if (!reportRef.current) return;
     setGenerating(true);
     try {
+      // Loaded on demand: html-to-image is only needed at the moment a PNG is
+      // generated, so it stays out of the Settings chunk. (It's precached by the
+      // service worker, so this still works offline in the installed app.)
+      const { toSvg } = await import("html-to-image");
+      if (!reportRef.current) return;
       const svgDataUrl = await toSvg(reportRef.current);
       const image = new Image();
       image.decoding = "async";
 
       await new Promise<void>((resolve, reject) => {
         image.onload = () => resolve();
-        image.onerror = () => reject(new Error("Не удалось подготовить SVG для PNG"));
+        image.onerror = () => reject(new Error(t.report.generateError));
         image.src = svgDataUrl;
       });
 
@@ -56,16 +101,18 @@ export function ReportGenerator() {
       canvas.height = Math.round(height * scale);
 
       const context = canvas.getContext("2d");
-      if (!context) throw new Error("Не удалось создать canvas");
+      if (!context) throw new Error(t.report.generateError);
 
       context.scale(scale, scale);
       context.drawImage(image, 0, 0, width, height);
 
-      const dataUrl = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.png`;
-      a.click();
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t.report.generateError))), "image/png")
+      );
+      // Share sheet on phones (reliable "Save to Photos/Files" on iOS), download elsewhere.
+      await saveFile(blob, reportFileName(range));
+    } catch {
+      showToast({ message: t.report.generateError, variant: "error" });
     } finally {
       setGenerating(false);
     }
@@ -86,11 +133,15 @@ export function ReportGenerator() {
         {t.report.darkVersion}
       </label>
 
-      <div className="overflow-x-auto">
+      {/* The PNG is always rendered from a fixed 360px layout; on narrower
+          screens the on-screen preview is scaled down to fit instead of being
+          cropped behind a horizontal scroll. The scale lives on a wrapper, so
+          the captured node (reportRef) and the exported image are unaffected. */}
+      <FitToWidth width={REPORT_WIDTH}>
         <div
           ref={reportRef}
           className={cn(
-            "mx-auto flex w-[360px] flex-col gap-5 rounded-3xl p-7 font-sans",
+            "flex w-[360px] flex-col gap-5 rounded-3xl p-7 font-sans",
             dark ? "bg-neutral-950 text-white" : "bg-gradient-to-b from-neutral-50 to-white text-neutral-900"
           )}
         >
@@ -101,22 +152,22 @@ export function ReportGenerator() {
             <p className="mt-1 text-sm text-neutral-500">{formatRangeLabel(range)}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 [&>*]:min-w-0">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.expenses}</p>
-              <p className="mt-0.5 text-xl font-bold">{formatCurrency(expenses)}</p>
+              <FitText className="mt-0.5 text-lg font-bold leading-tight tabular-nums">{formatCurrency(expenses)}</FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.income}</p>
-              <p className="mt-0.5 text-xl font-bold text-emerald-500">{formatCurrency(income)}</p>
+              <FitText className="mt-0.5 text-lg font-bold leading-tight tabular-nums text-emerald-500">{formatCurrency(income)}</FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.balance}</p>
-              <p className="mt-0.5 text-lg font-bold">{formatCurrency(balance)}</p>
+              <FitText className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(balance)}</FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.avgPerDay}</p>
-              <p className="mt-0.5 text-lg font-bold">{formatCurrency(avg)}</p>
+              <FitText className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(avg)}</FitText>
             </div>
           </div>
 
@@ -153,7 +204,7 @@ export function ReportGenerator() {
 
           <p className="mt-2 text-center text-[10px] tracking-wide text-neutral-400">{t.report.footer}</p>
         </div>
-      </div>
+      </FitToWidth>
 
       <Button onClick={handleDownload} disabled={generating} className="w-full">
         {generating ? t.report.generating : t.report.downloadPng}

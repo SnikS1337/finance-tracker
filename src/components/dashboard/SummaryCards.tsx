@@ -1,5 +1,9 @@
+import { ArrowRight } from "lucide-react";
 import { Card } from "../ui/Card";
-import { formatCurrency } from "../../lib/currency";
+import { AnimatedNumber } from "../ui/AnimatedNumber";
+import { FitText } from "../ui/FitText";
+import { formatCurrency, formatRubEquivalent } from "../../lib/currency";
+import { useExchangeRate } from "../../hooks/useExchangeRate";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 
@@ -9,31 +13,46 @@ interface Props {
   balance: number;
 }
 
-export function SummaryCards({ income, expenses, balance }: Props) {
+function RubEquivalent({ amount, rate }: { amount: number; rate: number }) {
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-3 md:gap-3 animate-card-in motion-reduce:animate-none">
+    <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
+      <ArrowRight size={11} strokeWidth={2} aria-hidden="true" className="shrink-0" />
+      <span className="truncate">{formatRubEquivalent(amount, rate)}</span>
+    </p>
+  );
+}
+
+export function SummaryCards({ income, expenses, balance }: Props) {
+  const rate = useExchangeRate();
+
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-2.5 sm:grid-cols-3 md:gap-3 animate-card-in [animation-delay:var(--stagger,0ms)] motion-reduce:animate-none">
       <Card className="min-w-0 !p-3.5 transition-shadow duration-200 hover:shadow-sm">
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{t.summary.income}</p>
-        <p className="mt-1 break-words text-base font-semibold leading-tight tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-lg md:text-xl">
-          {formatCurrency(income)}
-        </p>
+        <FitText text={formatCurrency(income)} className="mt-1 tabular-nums text-base font-semibold leading-tight tracking-tight text-emerald-600 dark:text-emerald-400 sm:text-lg md:text-xl">
+          <AnimatedNumber value={income} format={formatCurrency} />
+        </FitText>
+        <RubEquivalent amount={income} rate={rate} />
       </Card>
       <Card className="min-w-0 !p-3.5 transition-shadow duration-200 hover:shadow-sm">
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{t.summary.expenses}</p>
-        <p className="mt-1 break-words text-base font-semibold leading-tight tracking-tight sm:text-lg md:text-xl">
-          {formatCurrency(expenses)}
-        </p>
+        <FitText text={formatCurrency(expenses)} className="mt-1 tabular-nums text-base font-semibold leading-tight tracking-tight sm:text-lg md:text-xl">
+          <AnimatedNumber value={expenses} format={formatCurrency} />
+        </FitText>
+        <RubEquivalent amount={expenses} rate={rate} />
       </Card>
       <Card className="min-w-0 !p-3.5 transition-shadow duration-200 hover:shadow-sm">
         <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{t.summary.balance}</p>
-        <p
+        <FitText
+          text={formatCurrency(balance)}
           className={cn(
-            "mt-1 break-words text-base font-semibold leading-tight tracking-tight sm:text-lg md:text-xl",
+            "mt-1 tabular-nums text-base font-semibold leading-tight tracking-tight sm:text-lg md:text-xl",
             balance < 0 ? "text-red-600 dark:text-red-400" : "text-neutral-900 dark:text-neutral-100"
           )}
         >
-          {formatCurrency(balance)}
-        </p>
+          <AnimatedNumber value={balance} format={formatCurrency} />
+        </FitText>
+        <RubEquivalent amount={balance} rate={rate} />
       </Card>
     </div>
   );

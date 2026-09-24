@@ -1,24 +1,32 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";
+import { useToday } from "../../hooks/useToday";
 import { Button } from "../ui/Button";
 import { BudgetCard } from "./BudgetCard";
 import { BudgetFormSheet } from "./BudgetFormSheet";
 import { calculateBudgetProgress } from "../../lib/calculations";
-import { getPresetRange } from "../../lib/date-utils";
+import { fromDateKey, getPresetRange } from "../../lib/date-utils";
 import type { Budget } from "../../types";
 import { t } from "../../i18n";
 
 export function BudgetManager() {
   const { budgets, categories, transactions, upsertBudget, removeBudget } = useAppData();
   const { showToast } = useToast();
-  const range = getPresetRange("thisMonth");
+  const today = useToday();
+  const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | undefined>(undefined);
 
   const overallBudget = budgets.find((b) => !b.categoryId) ?? null;
-  const categoryBudgets = budgets.filter((b): b is Budget & { categoryId: string } => !!b.categoryId);
+  // Budgets of categories that no longer exist (left behind by deletions made
+  // before storage.deleteCategory cleaned them up) are hidden, not shown as a
+  // second "monthly budget".
+  const categoryIds = new Set(categories.map((c) => c.id));
+  const categoryBudgets = budgets.filter(
+    (b): b is Budget & { categoryId: string } => !!b.categoryId && categoryIds.has(b.categoryId)
+  );
 
   const expenseCategories = categories.filter((c) => c.type === "expense" && !c.isArchived);
   const categoriesWithoutBudget = expenseCategories.filter(
@@ -37,7 +45,7 @@ export function BudgetManager() {
   return (
     <div className="space-y-3">
       {overallBudget ? (
-        <BudgetCard progress={calculateBudgetProgress(overallBudget, transactions, range)} onEdit={() => openFor(undefined)} />
+        <BudgetCard progress={calculateBudgetProgress(overallBudget, transactions, range)} onEdit={() => openFor(undefined)} place="settings" />
       ) : (
         <Button variant="secondary" size="sm" onClick={() => openFor(undefined)}>
           {t.budgets.setMonthlyBudget}
@@ -52,6 +60,7 @@ export function BudgetManager() {
             progress={calculateBudgetProgress(b, transactions, range)}
             category={category}
             onEdit={() => openFor(b.categoryId)}
+            place="settings"
           />
         );
       })}

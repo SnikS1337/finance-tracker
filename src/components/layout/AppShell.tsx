@@ -1,45 +1,135 @@
-import { Outlet } from "react-router-dom";
+import { Suspense, useLayoutEffect, useMemo } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
+import { UpdateBanner } from "./UpdateBanner";
+import { settleTabTransition } from "./tabTransition";
 import { TransactionFormSheet } from "../transactions/TransactionFormSheet";
 import { useTransactionSheet } from "../../hooks/useTransactionSheet";
 import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";
+import { ChunkErrorBoundary } from "../ui/ChunkErrorBoundary";
+import { PageFallback } from "../ui/PageFallback";
+import { useToday } from "../../hooks/useToday";
+import { orderCategoriesByUsage } from "../../lib/categoryOrder";
+import { findBudgetCrossing } from "../../lib/budgetAlerts";
+import { fromDateKey, getPresetRange } from "../../lib/date-utils";
+import { newId } from "../../lib/id";
+import { rowMotion } from "../transactions/rowMotion";
+import type { Transaction } from "../../types";
 import { t } from "../../i18n";
 
 export function AppShell() {
-  const { state, openAdd, close, setMode } = useTransactionSheet();
-  const { categories, addTransaction, editTransaction, removeTransaction, undoDelete } = useAppData();
+  const { state, openAdd, close } = useTransactionSheet();
+  const {
+    transactions,
+    categories,
+    budgets,
+    addTransaction,
+    editTransaction,
+    removeTransaction,
+    restoreTransaction,
+    startRecurring,
+  } = useAppData();
   const { showToast } = useToast();
+  const { pathname } = useLocation();
+  const today = useToday();
+  const monthRange = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
+
+  // Most recently used category first, then by frequency — the one you want is
+  // usually in the first row.
+  const orderedCategories = useMemo(() => orderCategoriesByUsage(categories, transactions), [categories, transactions]);
+
+  /** " · Бюджет «Еда»: 85%" when this change pushed a budget past 80% or 100%. */
+  function budgetNote(after: Transaction[]): string {
+    const crossing = findBudgetCrossing(budgets, categories, transactions, after, monthRange);
+    if (!crossing) return "";
+    const label = crossing.category ? t.toasts.categoryBudgetLabel(crossing.category.name) : t.budgets.monthlyBudget;
+    return ` · ${t.toasts.budgetUsage(label, crossing.percent)}`;
+  }
+
+  // Each tab opens at the top. Without this the window keeps the previous tab's
+  // scroll offset (it's one shared document), so switching from a scrolled
+  // Transactions list dropped you into the middle of Settings.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    // A tab transition in progress can now capture the new page.
+    settleTabTransition();
+  }, [pathname]);
 
   return (
     <div className="min-h-screen md:pl-60">
       <Sidebar onAdd={() => openAdd()} />
-      <main className="mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
-        <Outlet />
+      {/* view-transition-name: page — the part that slides on tab switches (index.css). */}
+      <main className="page-transition mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
+        {/* Keyed by route: an error on one page (e.g. a chunk that failed to load
+            offline) must not stick around after navigating to another page. */}
+        <ChunkErrorBoundary key={pathname}>
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </ChunkErrorBoundary>
       </main>
       <BottomNav onAdd={() => openAdd()} />
+      <UpdateBanner />
 
       <TransactionFormSheet
         open={state.open}
         onOpenChange={(open) => !open && close()}
-        categories={categories}
+        categories={orderedCategories}
         transaction={state.transaction}
         initialType={state.initialType}
-        mode={state.mode}
-        onExpand={() => setMode("full")}
-        onSubmit={(input) => {
+        onSubmit={(input, options) => {
           if (state.transaction) {
-            editTransaction(state.transaction.id, input);
-            showToast({ message: t.toasts.transactionUpdated });
+            const id = state.transaction.id;
+            const after = transactions.map((tx) => (tx.id === id ? { ...tx, ...input } : tx));
+            const note = budgetNote(after);
+            editTransaction(id, input);
+            showToast({ message: t.toasts.transactionUpdated + note });
+          } else if (options?.repeatMonthly) {
+            // The first occurrence is this operation itself; the rule then adds
+            // one on the same day every month (catching up if the date is in the past).
+            const ruleId = newId();
+            const now = new Date().toISOString();
+            const first: Transaction = { id: newId(), ...input, recurringId: ruleId, createdAt: now, updatedAt: now };
+            const caughtUp = startRecurring(
+              {
+                id: ruleId,
+                type: input.type,
+                amount: input.amount,
+                categoryId: input.categoryId,
+                ...(input.note ? { note: input.note } : {}),
+                dayOfMonth: fromDateKey(input.date).getDate(),
+                startDate: input.date,
+                lastDate: input.date,
+                createdAt: now,
+              },
+              first
+            );
+            rowMotion.markAdded(first.id);
+            const extra = caughtUp > 0 ? ` · ${t.toasts.recurringCaughtUp(caughtUp)}` : "";
+            showToast({ message: t.toasts.recurringCreated + extra + budgetNote([...transactions, first]) });
           } else {
-            addTransaction(input);
-            showToast({ message: input.type === "income" ? t.toasts.incomeAdded : t.toasts.expenseAdded });
+            const added = addTransaction(input);
+            rowMotion.markAdded(added.id);
+            const note = budgetNote([...transactions, added]);
+            showToast({ message: (input.type === "income" ? t.toasts.incomeAdded : t.toasts.expenseAdded) + note });
           }
         }}
+        onRepeat={(input) => {
+          const added = addTransaction(input);
+          rowMotion.markAdded(added.id);
+          showToast({ message: t.toasts.repeatedToday + budgetNote([...transactions, added]) });
+        }}
         onDelete={(id) => {
+          const toRestore = state.transaction;
+          rowMotion.markRemoved(id);
           removeTransaction(id);
-          showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: undoDelete });
+          showToast({
+            message: t.toasts.transactionDeleted,
+            actionLabel: t.toasts.undo,
+            onAction: () => toRestore && restoreTransaction(toRestore),
+          });
         }}
       />
     </div>

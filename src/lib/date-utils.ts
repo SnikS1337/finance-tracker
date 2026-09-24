@@ -10,9 +10,10 @@ import {
   endOfYear,
   subDays,
   addDays,
+  subMonths,
+  subYears,
   eachDayOfInterval,
-  isWithinInterval,
-  parse,
+  differenceInCalendarDays,
 } from "date-fns";
 import { dateLocale, t } from "../i18n";
 
@@ -28,8 +29,24 @@ export function toDateKey(date: Date): string {
   return format(date, DATE_FORMAT);
 }
 
+const DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Parses a "yyyy-MM-dd" key as a local date. Hand-rolled instead of date-fns
+ * `parse`, which drags its whole token-parser table (~17 KB) into the initial
+ * bundle for this single fixed format. Same contract: malformed or impossible
+ * dates (e.g. "2026-02-30") produce an Invalid Date.
+ */
 export function fromDateKey(key: string): Date {
-  return parse(key, DATE_FORMAT, new Date());
+  const match = DATE_KEY_RE.exec(key);
+  if (!match) return new Date(NaN);
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day);
+  // new Date() silently rolls over out-of-range parts; reject those like `parse` does.
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return new Date(NaN);
+  return date;
 }
 
 export function todayKey(): string {
@@ -52,8 +69,13 @@ export type PeriodPreset =
   | "thisYear"
   | "custom";
 
-export function getPresetRange(preset: PeriodPreset, customStart?: string, customEnd?: string): DateRange {
-  const now = new Date();
+/** `now` is injectable so presets can follow a changing "today" (see useToday) and be tested. */
+export function getPresetRange(
+  preset: PeriodPreset,
+  customStart?: string,
+  customEnd?: string,
+  now: Date = new Date()
+): DateRange {
   switch (preset) {
     case "today":
       return { start: startOfDay(now), end: endOfDay(now) };
@@ -88,22 +110,80 @@ export function getPresetRange(preset: PeriodPreset, customStart?: string, custo
   }
 }
 
-/** The equivalent-length period immediately preceding `range`, for comparisons. */
-export function getPreviousRange(range: DateRange): DateRange {
-  const days = eachDayOfInterval(range).length;
-  const end = subDays(startOfDay(range.start), 1);
-  const start = subDays(end, days - 1);
-  return { start: startOfDay(start), end: endOfDay(end) };
-}
-
 function isValidRange(range: DateRange): boolean {
   return !isNaN(range.start.getTime()) && !isNaN(range.end.getTime()) && range.start <= range.end;
 }
 
+/**
+ * The range as inclusive "yyyy-MM-dd" bounds, or null for an invalid range.
+ * Date keys sort lexicographically in calendar order, so membership is a plain
+ * string comparison — no Date parsing per transaction.
+ */
+export function rangeKeys(range: DateRange): { startKey: string; endKey: string } | null {
+  if (!isValidRange(range)) return null;
+  return { startKey: toDateKey(range.start), endKey: toDateKey(range.end) };
+}
+
 export function isDateKeyInRange(dateKey: string, range: DateRange): boolean {
-  if (!isValidRange(range)) return false;
-  const d = fromDateKey(dateKey);
-  return isWithinInterval(d, { start: startOfDay(range.start), end: endOfDay(range.end) });
+  const keys = rangeKeys(range);
+  return keys !== null && dateKey >= keys.startKey && dateKey <= keys.endKey;
+}
+
+function isWholeMonth(start: Date, end: Date): boolean {
+  return start.getDate() === 1 && toDateKey(end) === toDateKey(endOfMonth(start));
+}
+
+function isWholeYear(start: Date, end: Date): boolean {
+  return start.getMonth() === 0 && start.getDate() === 1 && toDateKey(end) === toDateKey(endOfYear(start));
+}
+
+/**
+ * What to compare a period against, taking into account how much of it has
+ * actually happened by `now`:
+ *
+ * - `current` is the elapsed part of `range` (a period that is still running
+ *   ends today; a past period is unchanged);
+ * - `previous`: for a calendar month or year, the same dates of the previous
+ *   month/year ("1–24 Sep" vs "1–24 Aug"), or all of it once the current one
+ *   is over; for any other period, the equally long stretch immediately before.
+ *
+ * Returns null for an invalid range.
+ */
+export function getComparisonRanges(
+  range: DateRange,
+  now: Date = new Date()
+): { current: DateRange; previous: DateRange } | null {
+  if (!isValidRange(range)) return null;
+  const start = startOfDay(range.start);
+  const fullEnd = startOfDay(range.end);
+  const today = startOfDay(now);
+  const currentEnd = fullEnd <= today ? fullEnd : today < start ? start : today;
+  const days = differenceInCalendarDays(currentEnd, start) + 1;
+
+  let previousStart: Date;
+  let previousLimit: Date | null = null;
+  if (isWholeMonth(start, fullEnd)) {
+    previousStart = startOfMonth(subMonths(start, 1));
+    previousLimit = endOfMonth(previousStart);
+  } else if (isWholeYear(start, fullEnd)) {
+    previousStart = startOfYear(subYears(start, 1));
+    previousLimit = endOfYear(previousStart);
+  } else {
+    previousStart = subDays(start, days);
+  }
+  let previousEnd = addDays(previousStart, days - 1);
+  if (previousLimit) {
+    // A finished month/year is compared with the whole previous one (Sep vs all
+    // of Aug, even though the day counts differ); a running one with the same
+    // dates, never spilling past the previous month's/year's end.
+    const finished = toDateKey(currentEnd) === toDateKey(fullEnd);
+    if (finished || previousEnd > previousLimit) previousEnd = previousLimit;
+  }
+
+  return {
+    current: { start, end: endOfDay(currentEnd) },
+    previous: { start: startOfDay(previousStart), end: endOfDay(previousEnd) },
+  };
 }
 
 export function allDateKeysInRange(range: DateRange): string[] {

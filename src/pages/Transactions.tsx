@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
-import { usePeriod } from "../hooks/usePeriod";
-import { PeriodSelector } from "../components/dashboard/PeriodSelector";
+import { useUrlPeriod } from "../hooks/usePeriod";
+import { PeriodSelector } from "../components/period/PeriodSelector";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
-import { useTransactionSheet } from "../hooks/useTransactionSheet";
+import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
 import { useToast } from "../hooks/useToast";
 import { isDateKeyInRange } from "../lib/date-utils";
+import { matchesSearch } from "../lib/search";
 import type { TransactionType } from "../types";
 import { Search } from "lucide-react";
 import { t } from "../i18n";
@@ -16,29 +17,34 @@ import { t } from "../i18n";
 type SortOption = "newest" | "oldest" | "largest" | "smallest";
 
 export default function Transactions() {
-  const { transactions, categories, removeTransaction, undoDelete } = useAppData();
-  const { openAdd, openEdit } = useTransactionSheet();
+  const { transactions, categories, removeTransaction, restoreTransaction } = useAppData();
+  const { openAdd, openEdit } = useTransactionSheetActions();
   const { showToast } = useToast();
-  const period = usePeriod("thisMonth");
+  const period = useUrlPeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();
-  const categoryFilter = searchParams.get("category") ?? "all";
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [sort, setSort] = useState<SortOption>("newest");
   const [query, setQuery] = useState("");
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  // A link can point at a category that no longer exists (deleted) — then the
+  // filter is ignored instead of silently showing an empty list under "All".
+  const requestedCategory = searchParams.get("category");
+  const categoryFilter = requestedCategory && categoryById.has(requestedCategory) ? requestedCategory : "all";
+  // Archived categories are hidden from the filter list — except the one that
+  // is currently filtered on (e.g. opened from a chart), so the select shows
+  // what is actually being filtered.
+  const filterCategories = useMemo(
+    () => categories.filter((c) => !c.isArchived || c.id === categoryFilter),
+    [categories, categoryFilter]
+  );
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = transactions.filter((tx) => {
       if (!isDateKeyInRange(tx.date, period.range)) return false;
       if (typeFilter !== "all" && tx.type !== typeFilter) return false;
       if (categoryFilter !== "all" && tx.categoryId !== categoryFilter) return false;
-      if (q) {
-        const name = categoryById.get(tx.categoryId)?.name.toLowerCase() ?? "";
-        if (!name.includes(q)) return false;
-      }
-      return true;
+      return matchesSearch(tx, categoryById.get(tx.categoryId)?.name ?? "", query);
     });
 
     list = list.slice().sort((a, b) => {
@@ -92,17 +98,28 @@ export default function Transactions() {
         </select>
         <select
           value={categoryFilter}
-          onChange={(e) => setSearchParams(e.target.value === "all" ? {} : { category: e.target.value })}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Only touch `category`; the period lives in the same query string.
+            setSearchParams(
+              (prev) => {
+                const params = new URLSearchParams(prev);
+                if (value === "all") params.delete("category");
+                else params.set("category", value);
+                return params;
+              },
+              { replace: true }
+            );
+          }}
           className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm dark:border-neutral-800 dark:bg-surface-dark-subtle"
         >
           <option value="all">{t.transactionsPage.allCategories}</option>
-          {categories
-            .filter((c) => !c.isArchived)
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon} {c.name}
-              </option>
-            ))}
+          {filterCategories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.name}
+              {c.isArchived ? ` · ${t.categories.archived}` : ""}
+            </option>
+          ))}
         </select>
         <select
           value={sort}
@@ -137,7 +154,7 @@ export default function Transactions() {
           onSelect={openEdit}
           onDelete={(tx) => {
             removeTransaction(tx.id);
-            showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: undoDelete });
+            showToast({ message: t.toasts.transactionDeleted, actionLabel: t.toasts.undo, onAction: () => restoreTransaction(tx) });
           }}
         />
       )}

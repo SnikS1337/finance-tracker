@@ -1,17 +1,16 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Transaction, NewTransactionInput } from "../types";
 import * as storage from "../lib/storage";
+import { newId } from "../lib/id";
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => storage.getTransactions());
-  // Holds the most recently deleted transaction so the toast's "Undo" can restore it.
-  const lastDeleted = useRef<Transaction | null>(null);
 
   const refresh = useCallback(() => setTransactions(storage.getTransactions()), []);
 
   const addTransaction = useCallback((input: NewTransactionInput) => {
     const now = new Date().toISOString();
-    const tx: Transaction = { id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now };
+    const tx: Transaction = { id: newId(), ...input, createdAt: now, updatedAt: now };
     storage.createTransaction(tx);
     refresh();
     return tx;
@@ -27,31 +26,38 @@ export function useTransactions() {
 
   const removeTransaction = useCallback(
     (id: string) => {
-      const found = transactions.find((t) => t.id === id) ?? null;
-      lastDeleted.current = found;
       storage.deleteTransaction(id);
-      refresh();
-    },
-    [transactions, refresh]
-  );
-
-  const undoDelete = useCallback(() => {
-    const tx = lastDeleted.current;
-    if (!tx) return;
-    storage.createTransaction(tx);
-    lastDeleted.current = null;
-    refresh();
-  }, [refresh]);
-
-  const reassignCategory = useCallback(
-    (fromCategoryId: string, toCategoryId: string) => {
-      const all = storage.getTransactions();
-      const next = all.map((t) => (t.categoryId === fromCategoryId ? { ...t, categoryId: toCategoryId } : t));
-      storage.saveTransactions(next);
       refresh();
     },
     [refresh]
   );
 
-  return { transactions, addTransaction, editTransaction, removeTransaction, undoDelete, reassignCategory, refresh };
+  /**
+   * Restores an exact, previously-deleted transaction (same id/timestamps),
+   * for a toast's "Undo" action. Callers must capture the specific
+   * transaction they just deleted and pass it back here directly, rather
+   * than relying on a single shared "last deleted" slot: with swipe-to-delete
+   * it's easy to delete more than one transaction before dismissing/acting on
+   * an earlier toast, and several undo toasts can be visible at once, each
+   * needing to restore *its own* transaction, not just whichever was deleted
+   * most recently.
+   */
+  const restoreTransaction = useCallback(
+    (tx: Transaction) => {
+      storage.createTransaction(tx);
+      refresh();
+    },
+    [refresh]
+  );
+
+  const reassignCategory = useCallback(
+    (fromCategoryId: string, toCategoryId: string) => {
+      // Moves repeating operations along too (see AppDataContext, which re-reads them).
+      storage.reassignCategory(fromCategoryId, toCategoryId);
+      refresh();
+    },
+    [refresh]
+  );
+
+  return { transactions, addTransaction, editTransaction, removeTransaction, restoreTransaction, reassignCategory, refresh };
 }

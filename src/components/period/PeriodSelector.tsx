@@ -26,11 +26,13 @@ export function PeriodSelector({ value, onChange, customStart, customEnd, onCust
   const invalidRange = value === "custom" && customStart > customEnd;
 
   return (
-    <div className="animate-card-in motion-reduce:animate-none">
+    <div role="group" aria-label={t.period.groupLabel} className="animate-card-in motion-reduce:animate-none">
       <div className="flex flex-wrap gap-2 pb-1">
         {PRESETS.map((p) => (
           <button
             key={p.value}
+            type="button"
+            aria-pressed={value === p.value}
             onClick={() => onChange(p.value)}
             className={cn(
               "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 active:scale-[0.97]",

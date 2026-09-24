@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { ToastContext, type ToastItem } from "./toastStore";
+import { newId } from "../../lib/id";
 
 // Matches the "toast-out" animation duration in tailwind.config.js.
 const EXIT_ANIMATION_MS = 220;
@@ -46,8 +47,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [clearTimer]
   );
 
+  // What's on screen right now, for `passive` toasts.
+  const current = useRef<{ toast: ToastItem | null; leaving: Set<string> }>({ toast: null, leaving: new Set() });
+  useLayoutEffect(() => {
+    current.current = { toast: toasts[0] ?? null, leaving: leavingIds };
+  });
+
   const showToast = useCallback(
     (toast: Omit<ToastItem, "id">) => {
+      const visible = current.current.toast;
+      if (toast.passive && visible?.actionLabel && !current.current.leaving.has(visible.id)) return;
+
       // Keep a single toast visible. This prevents rapid actions such as
       // repeated swipe-to-delete from filling the screen with identical toasts.
       timers.current.forEach((timer) => clearTimeout(timer));
@@ -55,7 +65,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       removeTimers.current.forEach((timer) => clearTimeout(timer));
       removeTimers.current.clear();
 
-      const id = crypto.randomUUID();
+      const id = newId();
       setLeavingIds(new Set());
       setToasts([{ ...toast, id }]);
 
@@ -66,14 +76,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    // The maps themselves never change (only their contents), so capturing them is safe.
+    const pending = timers.current;
+    const removing = removeTimers.current;
     return () => {
-      timers.current.forEach((timer) => clearTimeout(timer));
-      removeTimers.current.forEach((timer) => clearTimeout(timer));
+      pending.forEach((timer) => clearTimeout(timer));
+      removing.forEach((timer) => clearTimeout(timer));
     };
   }, []);
 
+  // Stable context value: showing/hiding a toast re-renders only the toast
+  // stack, not every component that can show toasts (the current page included).
+  const contextValue = useMemo(() => ({ showToast }), [showToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 md:bottom-6">
         {toasts.map((toast) => (

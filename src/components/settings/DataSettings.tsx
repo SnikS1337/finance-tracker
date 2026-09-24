@@ -5,7 +5,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useToast } from "../../hooks/useToast";
 import { useAppData } from "../../hooks/useAppData";
 import * as storage from "../../lib/storage";
-import { downloadCSV, downloadJSONBackup, readFileAsText } from "../../lib/export";
+import { saveCSV, saveJSONBackup, readFileAsText } from "../../lib/export";
 import { t } from "../../i18n";
 
 export function DataSettings() {
@@ -31,15 +31,14 @@ export function DataSettings() {
 
   return (
     <Card className="space-y-3">
-      <h3 className="text-sm font-semibold">{t.settings.dataSection}</h3>
-
+      {/* No card title: the Settings page already heads this section with the same text. */}
       <div className="grid grid-cols-2 gap-2">
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => {
-            downloadJSONBackup(storage.exportBackup());
-            showToast({ message: t.toasts.backupExported });
+          onClick={async () => {
+            const result = await saveJSONBackup(storage.exportBackup());
+            if (result !== "cancelled") showToast({ message: t.toasts.backupExported });
           }}
         >
           {t.data.exportJson}
@@ -50,14 +49,19 @@ export function DataSettings() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => {
-            downloadCSV(storage.getTransactions(), categories);
-            showToast({ message: t.toasts.csvExported });
+          className="col-span-2"
+          onClick={async () => {
+            const result = await saveCSV(storage.getTransactions(), categories);
+            if (result !== "cancelled") showToast({ message: t.toasts.csvExported });
           }}
         >
           {t.data.exportCsv}
         </Button>
-        <Button variant="danger" size="sm" onClick={() => setConfirmDeleteAll(true)}>
+      </div>
+
+      {/* Destructive action on its own full-width row, visually separated from exports. */}
+      <div className="border-t border-neutral-100 pt-3 dark:border-neutral-800">
+        <Button variant="danger" size="sm" className="w-full" onClick={() => setConfirmDeleteAll(true)}>
           {t.data.deleteAll}
         </Button>
       </div>

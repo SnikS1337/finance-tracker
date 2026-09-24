@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Settings2 } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, ChevronDown, RotateCcw } from "lucide-react";
+import { format } from "date-fns";
 import { Sheet } from "../ui/Sheet";
 import { Button } from "../ui/Button";
 import { CategoryPicker } from "../categories/CategoryPicker";
-import { formatAmountInput, parseAmountInput } from "../../lib/currency";
-import { todayKey } from "../../lib/date-utils";
-import type { Category, NewTransactionInput, Transaction, TransactionType } from "../../types";
+import { formatAmountInput, formatRubEquivalent, parseAmountInput } from "../../lib/currency";
+import { fromDateKey, subDays, toDateKey, todayKey } from "../../lib/date-utils";
+import { useExchangeRate } from "../../hooks/useExchangeRate";
+import { MAX_NOTE_LENGTH, type Category, type NewTransactionInput, type Transaction, type TransactionType } from "../../types";
 import { cn } from "../../lib/cn";
-import { t } from "../../i18n";
+import { t, dateLocale } from "../../i18n";
 
 interface Props {
   open: boolean;
@@ -16,10 +18,10 @@ interface Props {
   /** Present when editing an existing transaction. */
   transaction?: Transaction | null;
   initialType?: TransactionType;
-  mode?: "quick" | "full";
-  onSubmit: (input: NewTransactionInput) => void;
+  onSubmit: (input: NewTransactionInput, options?: { repeatMonthly?: boolean }) => void;
   onDelete?: (id: string) => void;
-  onExpand?: () => void;
+  /** Edit mode: add the same operation again, dated today. */
+  onRepeat?: (input: NewTransactionInput) => void;
 }
 
 const TYPE_LABEL: Record<TransactionType, string> = {
@@ -38,19 +40,26 @@ export function TransactionFormSheet({
   categories,
   transaction,
   initialType = "expense",
-  mode = "full",
   onSubmit,
   onDelete,
-  onExpand,
+  onRepeat,
 }: Props) {
   const isEditing = !!transaction;
-  const isQuickAdd = mode === "quick" && !isEditing;
   const [type, setType] = useState<TransactionType>(initialType);
   const [amountRaw, setAmountRaw] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState(todayKey());
+  const [note, setNote] = useState("");
+  const [repeatMonthly, setRepeatMonthly] = useState(false);
+  // Date, note and "repeat monthly" live under "Дополнительно": most entries are
+  // today's, so the form stays short and the summary line shows what's set.
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const rate = useExchangeRate();
 
+  // Resets the form to match whatever is being opened (blank for "add", populated
+  // for "edit"). Deliberate: this synchronizes local form state with the `transaction`
+  // prop whenever the sheet opens, which is exactly what an effect is for.
   useEffect(() => {
     if (!open) return;
     if (transaction) {
@@ -59,47 +68,64 @@ export function TransactionFormSheet({
       setAmountRaw(String(transaction.amount));
       setCategoryId(transaction.categoryId);
       setDate(transaction.date);
+      setNote(transaction.note ?? "");
     } else {
       setType(initialType);
       setAmountRaw("");
       setCategoryId(null);
       setDate(todayKey());
+      setNote("");
     }
+    setRepeatMonthly(false);
+    setAdvancedOpen(false);
     setError(null);
   }, [open, transaction, initialType]);
 
   const categoriesForType = categories.filter((c) => c.type === type);
+  const today = todayKey();
+  const quickDates = [
+    { key: today, label: t.common.today },
+    { key: toDateKey(subDays(new Date(), 1)), label: t.common.yesterday },
+  ];
+
+  const yesterday = quickDates[1].key;
+  const dateSummary =
+    date === today
+      ? t.common.today
+      : date === yesterday
+        ? t.common.yesterday
+        : date
+          ? format(fromDateKey(date), "d MMM yyyy", { locale: dateLocale })
+          : "";
+  const advancedSummary = [dateSummary, note.trim() && `«${note.trim()}»`, !isEditing && repeatMonthly && t.transactionForm.advancedRepeatSummary]
+    .filter(Boolean)
+    .join(" · ");
 
   function handleSubmit() {
     const amount = parseAmountInput(amountRaw);
     if (amount <= 0) {
-      setError(isQuickAdd ? t.quickAdd.errorAmount : t.transactionForm.errorAmount);
+      setError(t.transactionForm.errorAmount);
       return;
     }
     if (!categoryId) {
-      setError(isQuickAdd ? t.quickAdd.errorCategory : t.transactionForm.errorCategory);
+      setError(t.transactionForm.errorCategory);
       return;
     }
     if (!date) {
+      setAdvancedOpen(true);
       setError(t.transactionForm.errorDate);
       return;
     }
-    onSubmit({ type, amount, categoryId, date });
+    const trimmedNote = note.trim();
+    onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
     onOpenChange(false);
   }
 
-  function switchToFull() {
-    if (!isQuickAdd) return;
-    onExpand?.();
-  }
-
-  const sheetTitle = isQuickAdd
-    ? t.quickAdd.title
-    : isEditing
-      ? t.transactionForm.editTitle
-      : type === "income"
-        ? t.transactionForm.addIncomeTitle
-        : t.transactionForm.addExpenseTitle;
+  const sheetTitle = isEditing
+    ? t.transactionForm.editTitle
+    : type === "income"
+      ? t.transactionForm.addIncomeTitle
+      : t.transactionForm.addExpenseTitle;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={sheetTitle}>
@@ -133,7 +159,7 @@ export function TransactionFormSheet({
 
         <div>
           <label htmlFor="amount" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {isQuickAdd ? t.quickAdd.amountLabel : t.transactionForm.amountLabel}
+            {t.transactionForm.amountLabel}
           </label>
           <div className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-3 transition-colors focus-within:border-neutral-900 dark:border-neutral-800 dark:focus-within:border-white">
             <input
@@ -154,40 +180,141 @@ export function TransactionFormSheet({
             />
             <span className="text-2xl font-semibold text-neutral-400">₫</span>
           </div>
+          {/* Live, display-only rouble equivalent (same rate as the summary cards). */}
+          <p
+            aria-live="polite"
+            className={cn(
+              "mt-1 h-4 px-1 text-xs tabular-nums text-neutral-400 transition-opacity duration-150 dark:text-neutral-500",
+              parseAmountInput(amountRaw) > 0 ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {parseAmountInput(amountRaw) > 0 ? formatRubEquivalent(parseAmountInput(amountRaw), rate) : ""}
+          </p>
         </div>
 
         <div>
           <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {isQuickAdd ? t.quickAdd.categoryLabel : t.transactionForm.categoryLabel}
+            {t.transactionForm.categoryLabel}
           </span>
           <CategoryPicker categories={categoriesForType} selectedId={categoryId} onSelect={setCategoryId} />
         </div>
 
-        {isQuickAdd && onExpand && (
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800">
           <button
             type="button"
-            onClick={switchToFull}
-            className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+            aria-expanded={advancedOpen}
+            aria-controls="transaction-advanced"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
           >
-            <Settings2 size={15} strokeWidth={1.8} aria-hidden="true" />
-            {t.quickAdd.fullInput}
-          </button>
-        )}
-
-        {!isQuickAdd && (
-          <div>
-            <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
-              {t.transactionForm.dateLabel}
-            </label>
-            <input
-              id="date"
-              type="date"
-              value={date}
-              max={todayKey()}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium">{t.transactionForm.advancedLabel}</span>
+              <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">{advancedSummary}</span>
+            </span>
+            <ChevronDown
+              size={18}
+              aria-hidden="true"
+              className={cn(
+                "shrink-0 text-neutral-400 transition-transform duration-200 ease-calm-out",
+                advancedOpen && "rotate-180"
+              )}
             />
+          </button>
+          {/* Grid-rows trick: animates to the content's natural height. `inert`
+              keeps the hidden fields out of tab order and screen readers. */}
+          <div
+            id="transaction-advanced"
+            inert={!advancedOpen}
+            className={cn(
+              "grid transition-[grid-template-rows,opacity] duration-280 ease-calm-out",
+              advancedOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            )}
+          >
+            <div className="min-h-0 overflow-hidden">
+              <div className="space-y-4 px-3 pb-3 pt-1">
+                <div>
+                  <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                    {t.transactionForm.dateLabel}
+                  </label>
+                  <div className="flex gap-2">
+                    {/* Quick picks for the two dates that cover almost every entry; the
+                        calendar stays for anything older. */}
+                    {quickDates.map((option) => (
+                      <button
+                        key={option.key}
+                        type="button"
+                        aria-pressed={date === option.key}
+                        onClick={() => setDate(option.key)}
+                        className={cn(
+                          "shrink-0 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                          date === option.key
+                            ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900"
+                            : "border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-700"
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                    <input
+                      id="date"
+                      type="date"
+                      value={date}
+                      max={todayKey()}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+                    />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="note" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                {t.transactionForm.noteLabel}
+              </label>
+              <input
+                id="note"
+                value={note}
+                maxLength={MAX_NOTE_LENGTH}
+                enterKeyHint="done"
+                autoComplete="off"
+                placeholder={t.transactionForm.notePlaceholder}
+                onChange={(e) => setNote(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+              />
+            </div>
+
+            {!isEditing && (
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
+                <input
+                  type="checkbox"
+                  checked={repeatMonthly}
+                  onChange={(e) => setRepeatMonthly(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-neutral-900 dark:accent-white"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">{t.transactionForm.repeatMonthly}</span>
+                  {repeatMonthly && date && (
+                    <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">
+                      {t.transactionForm.repeatMonthlyHint(Number(date.slice(8, 10)))}
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
+              </div>
+            </div>
           </div>
+        </div>
+
+        {isEditing && transaction?.recurringId && (
+          <p className="rounded-xl bg-neutral-100 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+            {t.transactionForm.recurringEditHint}
+          </p>
         )}
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -206,17 +333,35 @@ export function TransactionFormSheet({
             </Button>
           )}
           <Button type="button" onClick={handleSubmit} className="flex-1">
-            {isQuickAdd
-              ? type === "income"
-                ? t.quickAdd.addIncome
-                : t.quickAdd.addExpense
-              : isEditing
-                ? t.transactionForm.saveChanges
-                : type === "income"
-                  ? t.transactionForm.addIncomeCta
-                  : t.transactionForm.addExpenseCta}
+            {isEditing
+              ? t.transactionForm.saveChanges
+              : type === "income"
+                ? t.transactionForm.addIncomeCta
+                : t.transactionForm.addExpenseCta}
           </Button>
         </div>
+
+        {isEditing && onRepeat && transaction && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full text-neutral-600 dark:text-neutral-300"
+            onClick={() => {
+              onRepeat({
+                type: transaction.type,
+                amount: transaction.amount,
+                categoryId: transaction.categoryId,
+                date: todayKey(),
+                note: transaction.note,
+              });
+              onOpenChange(false);
+            }}
+          >
+            <RotateCcw size={15} aria-hidden="true" />
+            {t.transactionForm.repeatToday}
+          </Button>
+        )}
       </div>
     </Sheet>
   );

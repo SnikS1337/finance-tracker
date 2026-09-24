@@ -6,6 +6,8 @@ export interface ToastItem {
   actionLabel?: string;
   onAction?: () => void;
   variant?: "default" | "error";
+  /** Informational: shown only if it wouldn't replace a toast with an action (e.g. "Отменить"). */
+  passive?: boolean;
 }
 
 export interface ToastContextValue {

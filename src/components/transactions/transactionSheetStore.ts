@@ -5,16 +5,24 @@ export interface SheetState {
   open: boolean;
   transaction: Transaction | null;
   initialType: TransactionType;
-  mode: "quick" | "full";
 }
 
-export interface TransactionSheetContextValue {
-  state: SheetState;
-  openAdd: (type?: TransactionType, mode?: "quick" | "full") => void;
+export interface TransactionSheetActions {
+  openAdd: (type?: TransactionType) => void;
   openEdit: (transaction: Transaction) => void;
   close: () => void;
-  setMode: (mode: "quick" | "full") => void;
 }
 
-export const TransactionSheetContext: Context<TransactionSheetContextValue | null> =
-  createContext<TransactionSheetContextValue | null>(null);
+export interface TransactionSheetContextValue extends TransactionSheetActions {
+  state: SheetState;
+}
+
+/**
+ * Two contexts on purpose: pages only need the (stable) actions to open the
+ * sheet. If they subscribed to the sheet state too, opening the sheet would
+ * re-render the whole current page (e.g. every row of a long transaction list)
+ * right as the sheet animation starts.
+ */
+export const TransactionSheetStateContext: Context<SheetState | null> = createContext<SheetState | null>(null);
+export const TransactionSheetActionsContext: Context<TransactionSheetActions | null> =
+  createContext<TransactionSheetActions | null>(null);

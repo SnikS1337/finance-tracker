@@ -1,6 +1,14 @@
 import type { Dictionary } from "./types";
 
 export const ru: Dictionary = {
+  app: {
+    loadingSection: "Загружаем раздел…",
+    chunkErrorTitle: "Не удалось загрузить раздел",
+    chunkErrorOffline: "Нет подключения к интернету, а этот раздел ещё не сохранён для офлайн-режима. Подключитесь к сети и повторите.",
+    chunkErrorGeneric: "Соединение прервалось во время загрузки. Попробуйте ещё раз.",
+    chartUnavailable: "График сейчас недоступен",
+    retry: "Повторить",
+  },
   nav: {
     dashboard: "Обзор",
     transactions: "Операции",
@@ -37,10 +45,15 @@ export const ru: Dictionary = {
     from: "С",
     to: "По",
     invalidRange: "Дата начала позже даты окончания — данные не показаны, пока это не исправлено.",
+    groupLabel: "Период",
   },
   dashboard: {
     title: "Обзор",
     subtitle: "Что происходит с вашими финансами?",
+    periodCaption: "Сводка за текущий месяц",
+    todaySpent: (amount) => `Сегодня потрачено: ${amount}`,
+    todayNothingSpent: "Сегодня трат пока нет",
+    budgetsTitle: "Бюджеты",
     emptyTitle: "Пока нет операций",
     emptyDescription: "Начните учёт финансов, добавив первую операцию.",
     addTransactionCta: "+ Добавить операцию",
@@ -69,7 +82,7 @@ export const ru: Dictionary = {
   },
   transactionsPage: {
     title: "Операции",
-    searchPlaceholder: "Поиск по категории",
+    searchPlaceholder: "Поиск по категории, заметке или сумме",
     allTypes: "Все типы",
     expensesOnly: "Расходы",
     incomeOnly: "Доходы",
@@ -82,18 +95,10 @@ export const ru: Dictionary = {
     emptyDescriptionNoData: "Начните учёт финансов, добавив первую операцию.",
     emptyTitleNoMatch: "Ничего не найдено",
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
-  },
-  quickAdd: {
-    title: "Быстро добавить",
-    expense: "Расход",
-    income: "Доход",
-    amountLabel: "Сумма",
-    categoryLabel: "Категория",
-    addExpense: "Добавить расход",
-    addIncome: "Добавить доход",
-    fullInput: "Расширенный ввод",
-    errorAmount: "Введите сумму больше нуля.",
-    errorCategory: "Выберите категорию.",
+    deleteAction: "Удалить операцию",
+    recurringBadge: "Регулярная операция",
+    deleteConfirmTitle: "Удалить операцию?",
+    deleteConfirmDescription: "Сразу после удаления её можно будет вернуть кнопкой «Отменить».",
   },
   transactionForm: {
     addExpenseTitle: "Новый расход",
@@ -111,8 +116,19 @@ export const ru: Dictionary = {
     errorAmount: "Введите сумму больше нуля.",
     errorCategory: "Выберите категорию.",
     errorDate: "Выберите дату.",
+    repeatToday: "Повторить сегодня",
+    noteLabel: "Заметка",
+    notePlaceholder: "Необязательно",
+    repeatMonthly: "Повторять каждый месяц",
+    advancedLabel: "Дополнительно",
+    advancedRepeatSummary: "каждый месяц",
+    repeatMonthlyHint: (day) => `Будет добавляться автоматически ${day}-го числа каждого месяца`,
+    recurringEditHint: "Регулярная операция: изменения коснутся только этой записи. Остановить повтор можно в Настройках.",
   },
   toasts: {
+    repeatedToday: "Операция добавлена на сегодня",
+    budgetUsage: (label, percent) => `${label}: ${percent}%`,
+    categoryBudgetLabel: (name) => `Бюджет «${name}»`,
     transactionUpdated: "Операция обновлена",
     expenseAdded: "Расход добавлен",
     incomeAdded: "Доход добавлен",
@@ -128,6 +144,10 @@ export const ru: Dictionary = {
     backupImported: "Резервная копия импортирована",
     csvExported: "CSV-файл сохранён",
     allDataDeleted: "Все данные удалены",
+    recurringCreated: "Регулярная операция создана",
+    recurringAdded: (count) => `Добавлены регулярные операции: ${count}`,
+    recurringCaughtUp: (count) => `+${count} за прошлые месяцы`,
+    recurringStopped: "Повтор остановлен",
   },
   analytics: {
     title: "Аналитика",
@@ -190,12 +210,26 @@ export const ru: Dictionary = {
     categoriesSection: "Категории",
     reportsSection: "Отчёты",
     dataSection: "Резервные копии и данные",
+    recurringSection: "Регулярные операции",
     demoDataNotice:
       "Сейчас вы видите демонстрационные данные. Удалите их в разделе «Резервные копии и данные», когда будете готовы вести учёт своих финансов.",
     about: "О приложении",
     aboutBody:
       "Финансовый учёт — быстрый, приватный офлайн-трекер расходов и бюджета. Все данные остаются на этом устройстве, пока вы сами их не экспортируете.",
-    version: "Версия 1.0.0",
+    version: "Версия 1.5.0",
+  },
+  update: {
+    available: "Доступна новая версия",
+    reload: "Обновить",
+    later: "Позже",
+  },
+  recurring: {
+    empty: "Отметьте «Повторять каждый месяц» при добавлении операции — аренда, зарплата, подписки будут добавляться сами.",
+    monthlyOn: (day) => `каждый месяц, ${day}-го числа`,
+    stop: "Остановить",
+    stopConfirmTitle: "Остановить повтор?",
+    stopConfirmDescription: "Новые операции больше не будут добавляться. Уже добавленные останутся.",
+    stopConfirmCta: "Остановить",
   },
   data: {
     exportJson: "Экспорт JSON",
@@ -226,6 +260,7 @@ export const ru: Dictionary = {
     footer: "Финансовый учёт",
     downloadPng: "Скачать PNG",
     generating: "Формирование…",
+    generateError: "Не удалось создать отчёт. Попробуйте ещё раз.",
   },
   onboarding: {
     title: "Финансовый учёт",
@@ -242,6 +277,7 @@ export const ru: Dictionary = {
     expense: "расход",
     income: "доход",
     unknown: "неизвестно",
+    note: "заметка",
   },
   errors: {
     storageUnavailable: "Локальное хранилище недоступно в этом браузере.",
@@ -252,6 +288,7 @@ export const ru: Dictionary = {
     invalidTransactionData: "Данные операций в резервной копии отсутствуют или повреждены.",
     invalidCategoryData: "Данные категорий в резервной копии отсутствуют или повреждены.",
     invalidBudgetData: "Данные бюджетов в резервной копии повреждены.",
+    invalidRecurringData: "Данные регулярных операций в резервной копии повреждены.",
   },
 };
 

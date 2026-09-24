@@ -1,48 +1,40 @@
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
-import { usePeriod } from "../hooks/usePeriod";
-import { PeriodSelector } from "../components/dashboard/PeriodSelector";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
-import { SpendingChart } from "../components/dashboard/SpendingChart";
-import { CategoryDonut } from "../components/dashboard/CategoryDonut";
+import { BudgetOverview } from "../components/dashboard/BudgetOverview";
+import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
-import { useTransactionSheet } from "../hooks/useTransactionSheet";
-import { useNavigate } from "react-router-dom";
-import {
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  calculateBalance,
-  calculateAverageDailyExpense,
-  calculateMedianDailyExpense,
-  calculateSpendingDaysCount,
-  calculateExpenseCategoryTotals,
-} from "../lib/calculations";
-import { buildSpendingSeries } from "../lib/chart-data";
-import { isDateKeyInRange } from "../lib/date-utils";
+import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
+import { useToday } from "../hooks/useToday";
+import { summarize } from "../lib/calculations";
+import { formatCurrency } from "../lib/currency";
+import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
+import { fromDateKey, getPresetRange } from "../lib/date-utils";
 import { t } from "../i18n";
 
+/**
+ * The dashboard is a fixed "this month" overview. Choosing other periods lives
+ * in Analytics, which has the full PeriodSelector.
+ */
 export default function Dashboard() {
-  const { transactions, categories } = useAppData();
-  const period = usePeriod("thisMonth");
-  const { openAdd } = useTransactionSheet();
+  const { transactions, categories, budgets } = useAppData();
+  const { openAdd } = useTransactionSheetActions();
   const navigate = useNavigate();
 
-  const stats = useMemo(() => {
-    const { range } = period;
-    return {
-      income: calculateTotalIncome(transactions, range),
-      expenses: calculateTotalExpenses(transactions, range),
-      balance: calculateBalance(transactions, range),
-      avg: calculateAverageDailyExpense(transactions, range),
-      median: calculateMedianDailyExpense(transactions, range),
-      spendingDays: calculateSpendingDaysCount(transactions, range),
-      transactionCount: transactions.filter((tx) => isDateKeyInRange(tx.date, range)).length,
-      categoryTotals: calculateExpenseCategoryTotals(transactions, range),
-      series: buildSpendingSeries(transactions, range),
-    };
-  }, [transactions, period]);
+  // Recomputed when the day changes, so the dashboard rolls over to a new
+  // month at midnight even if the app stays open.
+  const today = useToday();
+  const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
+
+  const { summary, series } = useMemo(() => {
+    const summary = summarize(transactions, range);
+    return { summary, series: buildSpendingSeriesFromDaily(summary.dailyExpenses) };
+  }, [transactions, range]);
+
+  const spentToday = summary.dailyExpenses.get(today) ?? 0;
 
   if (transactions.length === 0) {
     return (
@@ -57,34 +49,32 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    // `stagger`: sections appear one after another (index.css).
+    <div className="stagger space-y-5">
       <div>
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.subtitle}</p>
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.periodCaption}</p>
+        <p className="mt-1 text-sm font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
+          {spentToday > 0 ? t.dashboard.todaySpent(formatCurrency(spentToday)) : t.dashboard.todayNothingSpent}
+        </p>
       </div>
 
-      <PeriodSelector
-        value={period.preset}
-        onChange={period.setPreset}
-        customStart={period.customStart}
-        customEnd={period.customEnd}
-        onCustomChange={period.setCustomRange}
-      />
+      <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
 
-      <SummaryCards income={stats.income} expenses={stats.expenses} balance={stats.balance} />
+      <BudgetOverview budgets={budgets} categories={categories} transactions={transactions} range={range} />
 
       <QuickStats
-        averagePerDay={stats.avg}
-        medianPerDay={stats.median}
-        transactionCount={stats.transactionCount}
-        spendingDays={stats.spendingDays}
+        averagePerDay={summary.averagePerDay}
+        medianPerDay={summary.medianPerDay}
+        transactionCount={summary.transactionCount}
+        spendingDays={summary.spendingDays}
       />
 
-      <SpendingChart data={stats.series} />
+      <SpendingChart data={series} />
 
       <CategoryDonut
         title={t.categoryBreakdown.spendingByCategory}
-        totals={stats.categoryTotals}
+        totals={summary.expenseByCategory}
         categories={categories}
         emptyMessage={t.categoryBreakdown.expenseEmptyHint}
         onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}

@@ -1,6 +1,7 @@
 import { useAppData } from "../hooks/useAppData";
 import { CategoryManager } from "../components/categories/CategoryManager";
 import { BudgetManager } from "../components/budgets/BudgetManager";
+import { RecurringManager } from "../components/recurring/RecurringManager";
 import { ReportGenerator } from "../components/settings/ReportGenerator";
 import { DataSettings } from "../components/settings/DataSettings";
 import { AppearanceSettings } from "../components/settings/AppearanceSettings";
@@ -22,6 +23,13 @@ export default function Settings() {
           {t.settings.budgetsSection}
         </h2>
         <BudgetManager />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="px-1 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+          {t.settings.recurringSection}
+        </h2>
+        <RecurringManager />
       </section>
 
       <section className="space-y-3">

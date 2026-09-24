@@ -4,6 +4,14 @@
  * swapping the export in `index.ts` — no component changes required.
  */
 export interface Dictionary {
+  app: {
+    loadingSection: string;
+    chunkErrorTitle: string;
+    chunkErrorOffline: string;
+    chunkErrorGeneric: string;
+    chartUnavailable: string;
+    retry: string;
+  };
   nav: {
     dashboard: string;
     transactions: string;
@@ -40,10 +48,17 @@ export interface Dictionary {
     from: string;
     to: string;
     invalidRange: string;
+    /** Accessible name of the period preset group. */
+    groupLabel: string;
   };
   dashboard: {
     title: string;
     subtitle: string;
+    /** Which period the dashboard summarises (it is fixed to the current month). */
+    periodCaption: string;
+    todaySpent: (amount: string) => string;
+    todayNothingSpent: string;
+    budgetsTitle: string;
     emptyTitle: string;
     emptyDescription: string;
     addTransactionCta: string;
@@ -85,18 +100,10 @@ export interface Dictionary {
     emptyDescriptionNoData: string;
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
-  };
-  quickAdd: {
-    title: string;
-    expense: string;
-    income: string;
-    amountLabel: string;
-    categoryLabel: string;
-    addExpense: string;
-    addIncome: string;
-    fullInput: string;
-    errorAmount: string;
-    errorCategory: string;
+    deleteAction: string;
+    recurringBadge: string;
+    deleteConfirmTitle: string;
+    deleteConfirmDescription: string;
   };
   transactionForm: {
     addExpenseTitle: string;
@@ -114,8 +121,21 @@ export interface Dictionary {
     errorAmount: string;
     errorCategory: string;
     errorDate: string;
+    /** Button in the edit sheet: add the same operation again, dated today. */
+    repeatToday: string;
+    noteLabel: string;
+    notePlaceholder: string;
+    repeatMonthly: string;
+    advancedLabel: string;
+    advancedRepeatSummary: string;
+    repeatMonthlyHint: (day: number) => string;
+    recurringEditHint: string;
   };
   toasts: {
+    repeatedToday: string;
+    /** Appended to the "added/updated" toast when a budget crosses 80% / 100%. */
+    budgetUsage: (label: string, percent: number) => string;
+    categoryBudgetLabel: (categoryName: string) => string;
     transactionUpdated: string;
     expenseAdded: string;
     incomeAdded: string;
@@ -131,6 +151,10 @@ export interface Dictionary {
     backupImported: string;
     csvExported: string;
     allDataDeleted: string;
+    recurringCreated: string;
+    recurringAdded: (count: number) => string;
+    recurringCaughtUp: (count: number) => string;
+    recurringStopped: string;
   };
   analytics: {
     title: string;
@@ -191,10 +215,24 @@ export interface Dictionary {
     categoriesSection: string;
     reportsSection: string;
     dataSection: string;
+    recurringSection: string;
     demoDataNotice: string;
     about: string;
     aboutBody: string;
     version: string;
+  };
+  update: {
+    available: string;
+    reload: string;
+    later: string;
+  };
+  recurring: {
+    empty: string;
+    monthlyOn: (day: number) => string;
+    stop: string;
+    stopConfirmTitle: string;
+    stopConfirmDescription: string;
+    stopConfirmCta: string;
   };
   data: {
     exportJson: string;
@@ -223,6 +261,7 @@ export interface Dictionary {
     footer: string;
     downloadPng: string;
     generating: string;
+    generateError: string;
   };
   onboarding: {
     title: string;
@@ -238,6 +277,7 @@ export interface Dictionary {
     expense: string;
     income: string;
     unknown: string;
+    note: string;
   };
   errors: {
     storageUnavailable: string;
@@ -248,5 +288,6 @@ export interface Dictionary {
     invalidTransactionData: string;
     invalidCategoryData: string;
     invalidBudgetData: string;
+    invalidRecurringData: string;
   };
 }

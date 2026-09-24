@@ -1,62 +1,70 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
-import { usePeriod } from "../hooks/usePeriod";
-import { PeriodSelector } from "../components/dashboard/PeriodSelector";
+import { periodSearch, useUrlPeriod } from "../hooks/usePeriod";
+import { PeriodSelector } from "../components/period/PeriodSelector";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
-import { SpendingChart } from "../components/dashboard/SpendingChart";
-import { CategoryDonut } from "../components/dashboard/CategoryDonut";
+import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { DayHighlightCards } from "../components/analytics/DayHighlightCards";
 import { PeriodComparison } from "../components/analytics/PeriodComparison";
 import { EmptyState } from "../components/ui/EmptyState";
-import { getPreviousRange, isDateKeyInRange, formatRangeLabel } from "../lib/date-utils";
-import {
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  calculateBalance,
-  calculateAverageDailyExpense,
-  calculateMedianDailyExpense,
-  calculateSpendingDaysCount,
-  calculateExpenseCategoryTotals,
-  calculateIncomeCategoryTotals,
-  calculateHighestSpendingDay,
-  calculateLowestSpendingDay,
-  calculatePercentageChange,
-} from "../lib/calculations";
-import { buildSpendingSeries } from "../lib/chart-data";
+import { getComparisonRanges, formatRangeLabel } from "../lib/date-utils";
+import { summarize, calculateTotalExpenses, calculatePercentageChange } from "../lib/calculations";
+import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
+import { canAnimate, EASE_CALM_OUT } from "../lib/motion";
 import { t } from "../i18n";
 
 export default function Analytics() {
   const { transactions, categories } = useAppData();
-  const period = usePeriod("thisMonth");
+  const period = useUrlPeriod("thisMonth");
   const navigate = useNavigate();
 
-  const isValidRange = !isNaN(period.range.start.getTime()) && !isNaN(period.range.end.getTime());
+  const { range } = period;
 
+  // Depends on the memoized `range`, not the `period` object (a new object every
+  // render), so the full analytics recalculation only runs when inputs change.
   const data = useMemo(() => {
-    const { range } = period;
-    const previousRange = isValidRange ? getPreviousRange(range) : range;
-    const expenses = calculateTotalExpenses(transactions, range);
-    const previousExpenses = calculateTotalExpenses(transactions, previousRange);
-    return {
-      income: calculateTotalIncome(transactions, range),
-      expenses,
-      balance: calculateBalance(transactions, range),
-      avg: calculateAverageDailyExpense(transactions, range),
-      median: calculateMedianDailyExpense(transactions, range),
-      spendingDays: calculateSpendingDaysCount(transactions, range),
-      transactionCount: transactions.filter((tx) => isDateKeyInRange(tx.date, range)).length,
-      expenseCategoryTotals: calculateExpenseCategoryTotals(transactions, range),
-      incomeCategoryTotals: calculateIncomeCategoryTotals(transactions, range),
-      highest: calculateHighestSpendingDay(transactions, range),
-      lowest: calculateLowestSpendingDay(transactions, range),
-      series: buildSpendingSeries(transactions, range),
-      previousExpenses,
-      previousRange,
-      percentageChange: calculatePercentageChange(expenses, previousExpenses),
+    const summary = summarize(transactions, range);
+    // Compare only what has actually happened: "1–24 Sep" vs "1–24 Aug", not a
+    // partial month against a full one.
+    const comparison = getComparisonRanges(range);
+    const comparisonData = comparison && {
+      ...comparison,
+      currentExpenses: calculateTotalExpenses(transactions, comparison.current),
+      previousExpenses: calculateTotalExpenses(transactions, comparison.previous),
     };
-  }, [transactions, period, isValidRange]);
+    return {
+      summary,
+      series: buildSpendingSeriesFromDaily(summary.dailyExpenses),
+      comparison: comparisonData
+        ? {
+            ...comparisonData,
+            percentageChange: calculatePercentageChange(comparisonData.currentExpenses, comparisonData.previousExpenses),
+          }
+        : null,
+    };
+  }, [transactions, range]);
+  const { summary, comparison } = data;
+
+  // Switching the period softly fades the results in instead of snapping
+  // (numbers glide on their own, see AnimatedNumber). Not on the first render.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const rangeKey = `${range.start.getTime()}_${range.end.getTime()}`;
+  const previousRangeKey = useRef(rangeKey);
+  useEffect(() => {
+    if (previousRangeKey.current === rangeKey) return;
+    previousRangeKey.current = rangeKey;
+    const el = resultsRef.current;
+    if (!canAnimate(el)) return;
+    el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 280, easing: EASE_CALM_OUT });
+  }, [rangeKey]);
+
+  // Opening a category keeps the period you were looking at.
+  const openCategory = (categoryId: string) => {
+    const extra = periodSearch(period);
+    navigate(`/transactions?category=${categoryId}${extra ? `&${extra}` : ""}`);
+  };
 
   if (transactions.length === 0) {
     return (
@@ -81,41 +89,43 @@ export default function Analytics() {
         onCustomChange={period.setCustomRange}
       />
 
-      <SummaryCards income={data.income} expenses={data.expenses} balance={data.balance} />
-      <QuickStats
-        averagePerDay={data.avg}
-        medianPerDay={data.median}
-        transactionCount={data.transactionCount}
-        spendingDays={data.spendingDays}
-      />
-      <DayHighlightCards highest={data.highest} lowest={data.lowest} />
-
-      {isValidRange && (
-        <PeriodComparison
-          currentLabel={formatRangeLabel(period.range)}
-          previousLabel={formatRangeLabel(data.previousRange)}
-          current={data.expenses}
-          previous={data.previousExpenses}
-          percentageChange={data.percentageChange}
+      <div ref={resultsRef} className="space-y-6">
+        <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
+        <QuickStats
+          averagePerDay={summary.averagePerDay}
+          medianPerDay={summary.medianPerDay}
+          transactionCount={summary.transactionCount}
+          spendingDays={summary.spendingDays}
         />
-      )}
+        <DayHighlightCards highest={summary.highest} lowest={summary.lowest} />
 
-      <SpendingChart data={data.series} />
+        {comparison && (
+          <PeriodComparison
+            currentLabel={formatRangeLabel(comparison.current)}
+            previousLabel={formatRangeLabel(comparison.previous)}
+            current={comparison.currentExpenses}
+            previous={comparison.previousExpenses}
+            percentageChange={comparison.percentageChange}
+          />
+        )}
 
-      <CategoryDonut
-        title={t.categoryBreakdown.spendingByCategory}
-        totals={data.expenseCategoryTotals}
-        categories={categories}
-        emptyMessage={t.categoryBreakdown.expenseEmptyHint}
-        onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
-      />
-      <CategoryDonut
-        title={t.categoryBreakdown.incomeByCategory}
-        totals={data.incomeCategoryTotals}
-        categories={categories}
-        emptyMessage={t.categoryBreakdown.incomeEmptyHint}
-        onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
-      />
+        <SpendingChart data={data.series} />
+
+        <CategoryDonut
+          title={t.categoryBreakdown.spendingByCategory}
+          totals={summary.expenseByCategory}
+          categories={categories}
+          emptyMessage={t.categoryBreakdown.expenseEmptyHint}
+          onSelectCategory={openCategory}
+        />
+        <CategoryDonut
+          title={t.categoryBreakdown.incomeByCategory}
+          totals={summary.incomeByCategory}
+          categories={categories}
+          emptyMessage={t.categoryBreakdown.incomeEmptyHint}
+          onSelectCategory={openCategory}
+        />
+      </div>
     </div>
   );
 }

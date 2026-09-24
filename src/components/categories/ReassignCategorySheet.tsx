@@ -16,11 +16,18 @@ interface Props {
 export function ReassignCategorySheet({ open, onOpenChange, category, otherCategories, transactionCount, onConfirm }: Props) {
   const [targetId, setTargetId] = useState<string>(otherCategories[0]?.id ?? "");
 
+  // Resets to the first available target whenever the sheet opens for a
+  // (possibly different) category. Deliberately does NOT depend on
+  // `otherCategories` itself: that array is recreated on every render of the
+  // parent (it's built with an inline `.filter(...)`), so depending on it
+  // would reset the user's dropdown choice on any unrelated re-render while
+  // this sheet is open, not just when it's actually opened.
   useEffect(() => {
     if (!open) return;
     // oxlint-disable-next-line react/set-state-in-effect
     setTargetId(otherCategories[0]?.id ?? "");
-  }, [open, category?.id, otherCategories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, category?.id]);
 
   if (!category) return null;
 

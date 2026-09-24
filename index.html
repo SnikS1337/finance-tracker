@@ -4,12 +4,92 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0ea5e9" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Browser UI (address/status bar) matches the app background; the script
+         below and useTheme.ts switch it with the in-app theme. -->
+    <meta name="theme-color" content="#f7f8fa" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Быстрый, приватный офлайн-трекер личных финансов." />
     <title>Финансовый учёт</title>
+    <script>
+      // Resolve the saved theme before the first paint, so neither the startup
+      // screen nor the app flashes the wrong colour scheme. Mirrors useTheme.ts.
+      (function () {
+        try {
+          var s = JSON.parse(localStorage.getItem("pft:settings") || "null");
+          var theme = (s && s.theme) || "system";
+          var dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) {
+            document.documentElement.classList.add("dark");
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", "#14161a");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <style>
+      /* Inline on purpose: paints before the main stylesheet/JS arrive. Colours
+         match tailwind.config.js (surface.subtle / surface.dark, neutral-*). */
+      html { background: #f7f8fa; color-scheme: light; }
+      html.dark { background: #14161a; color-scheme: dark; }
+      #startup {
+        position: fixed; inset: 0; z-index: 100;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 24px; text-align: center;
+        background: #f7f8fa; color: #171717;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        transition: opacity 280ms cubic-bezier(0.7, 0, 0.84, 0), visibility 0s linear 280ms;
+      }
+      html.dark #startup { background: #14161a; color: #f5f5f5; }
+      #startup.startup--hide { opacity: 0; visibility: hidden; pointer-events: none; }
+      .startup__mark {
+        width: 56px; height: 56px; border-radius: 16px; margin-bottom: 20px;
+        display: flex; align-items: center; justify-content: center;
+        background: #171717; color: #fff;
+        box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.35);
+      }
+      html.dark .startup__mark { background: #fff; color: #171717; box-shadow: none; }
+      .startup__title { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+      .startup__text { margin: 6px 0 0; font-size: 14px; color: #737373; }
+      html.dark .startup__text { color: #a3a3a3; }
+      /* Only shows up if loading actually takes a while (slow network). */
+      .startup__hint { margin: 2px 0 0; font-size: 13px; color: #a3a3a3; opacity: 0; animation: startup-fade 400ms ease-out 2.5s forwards; }
+      html.dark .startup__hint { color: #737373; }
+      .startup__bar {
+        position: relative; overflow: hidden; width: 104px; height: 3px; margin-top: 22px;
+        border-radius: 999px; background: rgba(23, 23, 23, 0.08);
+      }
+      html.dark .startup__bar { background: rgba(255, 255, 255, 0.1); }
+      .startup__bar::after {
+        content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+        border-radius: inherit; background: #171717; opacity: 0.55;
+        animation: startup-slide 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+      }
+      html.dark .startup__bar::after { background: #fff; opacity: 0.6; }
+      @keyframes startup-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+      @keyframes startup-fade { to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) {
+        #startup { transition: none; }
+        .startup__bar::after { animation: startup-breathe 2.4s ease-in-out infinite; left: 30%; }
+        .startup__hint { animation-duration: 1ms; }
+        @keyframes startup-breathe { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.6; } }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div id="startup" role="status" aria-live="polite">
+      <div class="startup__mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+          <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+        </svg>
+      </div>
+      <p class="startup__title">Финансовый учёт</p>
+      <p class="startup__text">Загружаем приложение…</p>
+      <p class="startup__hint">Ещё немного — почти готово</p>
+      <div class="startup__bar" aria-hidden="true"></div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
