@@ -4,9 +4,18 @@
  * Grouping and symbol placement follow Russian conventions (space-separated
  * thousands, symbol after the number) to match the rest of the UI.
  */
+// One shared formatter instead of `toLocaleString("ru-RU")` per call, which
+// builds a new formatter every time — noticeable with long lists and charts.
+const groupFormatter = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
+
+/** Whole number with Russian digit grouping ("1 234 567", non-breaking spaces). */
+export function formatGrouped(value: number): string {
+  return groupFormatter.format(value);
+}
+
 export function formatCurrency(amount: number): string {
   const safe = Number.isFinite(amount) ? Math.round(amount) : 0;
-  const formatted = Math.abs(safe).toLocaleString("ru-RU");
+  const formatted = formatGrouped(Math.abs(safe));
   return `${safe < 0 ? "-" : ""}${formatted} ₫`;
 }
 
@@ -44,7 +53,7 @@ export function parseAmountInput(raw: string): number {
 export function formatAmountInput(raw: string): string {
   const value = parseAmountInput(raw);
   if (!value) return "";
-  return value.toLocaleString("ru-RU");
+  return formatGrouped(value);
 }
 
 /**
@@ -56,5 +65,5 @@ export function formatRubEquivalent(vndAmount: number, vndToRubRate: number): st
   const safeAmount = Number.isFinite(vndAmount) ? vndAmount : 0;
   const safeRate = Number.isFinite(vndToRubRate) && vndToRubRate > 0 ? vndToRubRate : 0;
   const rubles = Math.round(Math.abs(safeAmount) * safeRate);
-  return `≈ ${rubles.toLocaleString("ru-RU")} ₽`;
+  return `≈ ${formatGrouped(rubles)} ₽`;
 }

@@ -6,7 +6,7 @@ import { QuickStats } from "../components/dashboard/QuickStats";
 import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
-import { useTransactionSheet } from "../hooks/useTransactionSheet";
+import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
 import { useToday } from "../hooks/useToday";
 import { summarize } from "../lib/calculations";
 import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
@@ -19,7 +19,7 @@ import { t } from "../i18n";
  */
 export default function Dashboard() {
   const { transactions, categories } = useAppData();
-  const { openAdd } = useTransactionSheet();
+  const { openAdd } = useTransactionSheetActions();
   const navigate = useNavigate();
 
   // Recomputed when the day changes, so the dashboard rolls over to a new

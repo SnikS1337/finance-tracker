@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { usePeriod } from "../hooks/usePeriod";
-import { PeriodSelector } from "../components/dashboard/PeriodSelector";
+import { PeriodSelector } from "../components/period/PeriodSelector";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
-import { useTransactionSheet } from "../hooks/useTransactionSheet";
+import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
 import { useToast } from "../hooks/useToast";
 import { isDateKeyInRange } from "../lib/date-utils";
 import type { TransactionType } from "../types";
@@ -17,7 +17,7 @@ type SortOption = "newest" | "oldest" | "largest" | "smallest";
 
 export default function Transactions() {
   const { transactions, categories, removeTransaction, restoreTransaction } = useAppData();
-  const { openAdd, openEdit } = useTransactionSheet();
+  const { openAdd, openEdit } = useTransactionSheetActions();
   const { showToast } = useToast();
   const period = usePeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();

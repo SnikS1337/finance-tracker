@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
-import { PeriodSelector } from "../dashboard/PeriodSelector";
+import { PeriodSelector } from "../period/PeriodSelector";
 import { usePeriod } from "../../hooks/usePeriod";
 import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";

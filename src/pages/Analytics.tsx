@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { usePeriod } from "../hooks/usePeriod";
-import { PeriodSelector } from "../components/dashboard/PeriodSelector";
+import { PeriodSelector } from "../components/period/PeriodSelector";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
 import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";

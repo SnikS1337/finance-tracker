@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { ToastContext, type ToastItem } from "./toastStore";
 import { newId } from "../../lib/id";
@@ -73,8 +73,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Stable context value: showing/hiding a toast re-renders only the toast
+  // stack, not every component that can show toasts (the current page included).
+  const contextValue = useMemo(() => ({ showToast }), [showToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <div className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 md:bottom-6">
         {toasts.map((toast) => (

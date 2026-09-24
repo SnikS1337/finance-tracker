@@ -1,15 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Receipt, BarChart3, Settings as SettingsIcon, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { NAV_ITEMS, type NavItemConfig } from "./navItems";
 import { cn } from "../../lib/cn";
 import { scrollToTopSmooth } from "../../lib/scroll";
 import { t } from "../../i18n";
 
-const NAV_ITEMS = [
-  { to: "/", label: t.nav.dashboard, icon: LayoutDashboard },
-  { to: "/transactions", label: t.nav.transactions, icon: Receipt },
-  { to: "/analytics", label: t.nav.analytics, icon: BarChart3 },
-  { to: "/settings", label: t.nav.settings, icon: SettingsIcon },
-];
 
 export function BottomNav({ onAdd }: { onAdd: () => void }) {
   return (
@@ -37,7 +32,7 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-function NavItem({ to, label, icon: Icon }: { to: string; label: string; icon: typeof LayoutDashboard }) {
+function NavItem({ to, label, icon: Icon }: NavItemConfig) {
   const { pathname } = useLocation();
   return (
     <NavLink
