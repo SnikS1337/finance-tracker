@@ -69,8 +69,13 @@ export type PeriodPreset =
   | "thisYear"
   | "custom";
 
-export function getPresetRange(preset: PeriodPreset, customStart?: string, customEnd?: string): DateRange {
-  const now = new Date();
+/** `now` is injectable so presets can follow a changing "today" (see useToday) and be tested. */
+export function getPresetRange(
+  preset: PeriodPreset,
+  customStart?: string,
+  customEnd?: string,
+  now: Date = new Date()
+): DateRange {
   switch (preset) {
     case "today":
       return { start: startOfDay(now), end: endOfDay(now) };

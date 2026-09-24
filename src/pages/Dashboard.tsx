@@ -7,9 +7,10 @@ import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { useTransactionSheet } from "../hooks/useTransactionSheet";
+import { useToday } from "../hooks/useToday";
 import { summarize } from "../lib/calculations";
 import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
-import { getPresetRange } from "../lib/date-utils";
+import { fromDateKey, getPresetRange } from "../lib/date-utils";
 import { t } from "../i18n";
 
 /**
@@ -21,8 +22,10 @@ export default function Dashboard() {
   const { openAdd } = useTransactionSheet();
   const navigate = useNavigate();
 
-  // Same lifetime as the old `usePeriod("thisMonth")` range: computed once per visit.
-  const range = useMemo(() => getPresetRange("thisMonth"), []);
+  // Recomputed when the day changes, so the dashboard rolls over to a new
+  // month at midnight even if the app stays open.
+  const today = useToday();
+  const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
 
   const { summary, series } = useMemo(() => {
     const summary = summarize(transactions, range);

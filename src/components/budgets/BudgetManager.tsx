@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";
+import { useToday } from "../../hooks/useToday";
 import { Button } from "../ui/Button";
 import { BudgetCard } from "./BudgetCard";
 import { BudgetFormSheet } from "./BudgetFormSheet";
 import { calculateBudgetProgress } from "../../lib/calculations";
-import { getPresetRange } from "../../lib/date-utils";
+import { fromDateKey, getPresetRange } from "../../lib/date-utils";
 import type { Budget } from "../../types";
 import { t } from "../../i18n";
 
 export function BudgetManager() {
   const { budgets, categories, transactions, upsertBudget, removeBudget } = useAppData();
   const { showToast } = useToast();
-  const range = getPresetRange("thisMonth");
+  const today = useToday();
+  const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | undefined>(undefined);
