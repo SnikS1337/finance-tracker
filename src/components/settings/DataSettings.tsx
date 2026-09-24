@@ -5,7 +5,7 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { useToast } from "../../hooks/useToast";
 import { useAppData } from "../../hooks/useAppData";
 import * as storage from "../../lib/storage";
-import { downloadCSV, downloadJSONBackup, readFileAsText } from "../../lib/export";
+import { saveCSV, saveJSONBackup, readFileAsText } from "../../lib/export";
 import { t } from "../../i18n";
 
 export function DataSettings() {
@@ -36,9 +36,9 @@ export function DataSettings() {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => {
-            downloadJSONBackup(storage.exportBackup());
-            showToast({ message: t.toasts.backupExported });
+          onClick={async () => {
+            const result = await saveJSONBackup(storage.exportBackup());
+            if (result !== "cancelled") showToast({ message: t.toasts.backupExported });
           }}
         >
           {t.data.exportJson}
@@ -50,9 +50,9 @@ export function DataSettings() {
           variant="secondary"
           size="sm"
           className="col-span-2"
-          onClick={() => {
-            downloadCSV(storage.getTransactions(), categories);
-            showToast({ message: t.toasts.csvExported });
+          onClick={async () => {
+            const result = await saveCSV(storage.getTransactions(), categories);
+            if (result !== "cancelled") showToast({ message: t.toasts.csvExported });
           }}
         >
           {t.data.exportCsv}

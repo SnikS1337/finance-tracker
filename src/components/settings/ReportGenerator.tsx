@@ -8,6 +8,7 @@ import { useToast } from "../../hooks/useToast";
 import { formatCurrency } from "../../lib/currency";
 import { formatRangeLabel } from "../../lib/date-utils";
 import { summarize } from "../../lib/calculations";
+import { reportFileName, saveFile } from "../../lib/export";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 
@@ -101,11 +102,11 @@ export function ReportGenerator() {
       context.scale(scale, scale);
       context.drawImage(image, 0, 0, width, height);
 
-      const dataUrl = canvas.toDataURL("image/png");
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = `financial-report-${new Date().toISOString().slice(0, 10)}.png`;
-      a.click();
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t.report.generateError))), "image/png")
+      );
+      // Share sheet on phones (reliable "Save to Photos/Files" on iOS), download elsewhere.
+      await saveFile(blob, reportFileName(range));
     } catch {
       showToast({ message: t.report.generateError, variant: "error" });
     } finally {
