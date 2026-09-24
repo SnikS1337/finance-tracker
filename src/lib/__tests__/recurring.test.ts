@@ -121,3 +121,46 @@ describe("repeating operations in storage", () => {
     expect(storage.getRecurringRules()).toEqual([]);
   });
 });
+
+describe("starting a repeating operation", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    storage.saveCategories([cat]);
+    storage.saveTransactions([]);
+  });
+
+  const first: Transaction = {
+    id: "t-first",
+    type: "expense",
+    amount: 5_000_000,
+    categoryId: "c-rent",
+    date: "2026-01-31",
+    recurringId: "r1",
+    createdAt: "",
+    updatedAt: "",
+  };
+
+  it("writes the first operation and the rule together", () => {
+    storage.createRecurring(rule(), first);
+    expect(storage.getTransactions()).toEqual([first]);
+    expect(storage.getRecurringRules()).toEqual([rule()]);
+  });
+
+  it("writes neither when storage is full", () => {
+    storage.getRecurringRules(); // initialize before counting writes
+    const proto = Object.getPrototypeOf(window.localStorage) as Storage;
+    const original = proto.setItem;
+    let calls = 0;
+    proto.setItem = function (this: Storage, key: string, value: string) {
+      if (key !== "pft:__test__" && ++calls === 2) throw new DOMException("quota", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+    try {
+      expect(() => storage.createRecurring(rule(), first)).toThrow();
+    } finally {
+      proto.setItem = original;
+    }
+    expect(storage.getTransactions()).toEqual([]);
+    expect(storage.getRecurringRules()).toEqual([]);
+  });
+});

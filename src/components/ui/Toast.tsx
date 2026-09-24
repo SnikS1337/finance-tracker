@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { ToastContext, type ToastItem } from "./toastStore";
 import { newId } from "../../lib/id";
@@ -47,8 +47,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [clearTimer]
   );
 
+  // What's on screen right now, for `passive` toasts.
+  const current = useRef<{ toast: ToastItem | null; leaving: Set<string> }>({ toast: null, leaving: new Set() });
+  useLayoutEffect(() => {
+    current.current = { toast: toasts[0] ?? null, leaving: leavingIds };
+  });
+
   const showToast = useCallback(
     (toast: Omit<ToastItem, "id">) => {
+      const visible = current.current.toast;
+      if (toast.passive && visible?.actionLabel && !current.current.leaving.has(visible.id)) return;
+
       // Keep a single toast visible. This prevents rapid actions such as
       // repeated swipe-to-delete from filling the screen with identical toasts.
       timers.current.forEach((timer) => clearTimeout(timer));

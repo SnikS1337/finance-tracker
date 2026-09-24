@@ -7,8 +7,18 @@ import { useRecurring } from "../hooks/useRecurring";
 import { useToday } from "../hooks/useToday";
 import { useToast } from "../hooks/useToast";
 import * as storage from "../lib/storage";
+import { todayKey } from "../lib/date-utils";
 import { t } from "../i18n";
 import { AppDataContext, type AppData } from "./appDataStore";
+
+/** Adds due repeating operations; 0 when nothing was due or storage is unavailable (nothing written then). */
+function applyDueRecurring(): number {
+  try {
+    return storage.applyRecurring(todayKey());
+  } catch {
+    return 0;
+  }
+}
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const transactions = useTransactions();
@@ -38,7 +48,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const { refresh: refreshBudgets } = budgets;
   const { refresh: refreshTransactions } = transactions;
   const { refresh: refreshSettings } = settings;
-  const { recurringRules, addRecurringRule, removeRecurringRule, refresh: refreshRecurring } = recurring;
+  const { recurringRules, startRecurring: startRecurringOnly, removeRecurringRule, refresh: refreshRecurring } = recurring;
+
+  // Starting a repeating operation adds its first occurrence (and any months
+  // already due) to the transactions too.
+  const startRecurring = useCallback(
+    (...args: Parameters<typeof startRecurringOnly>) => {
+      const caughtUp = startRecurringOnly(...args);
+      refreshTransactions();
+      return caughtUp;
+    },
+    [startRecurringOnly, refreshTransactions]
+  );
 
   // Deleting a category also deletes its budget and repeating operations in
   // storage (see storage.deleteCategory), so those slices must be re-read too.
@@ -63,6 +84,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   // Each hook's own `refresh` refreshes only its own slice; imports/deletes touch
   // everything at once, so callers get a combined refresh instead of a single hook's.
   const refresh = useCallback(() => {
+    // Imported or replaced data may have repeating operations that are due.
+    applyDueRecurring();
     refreshTransactions();
     refreshCategories();
     refreshBudgets();
@@ -70,23 +93,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     refreshRecurring();
   }, [refreshTransactions, refreshCategories, refreshBudgets, refreshSettings, refreshRecurring]);
 
-  // Repeating operations come due on their day: on start, when the date changes
-  // while the app is open, and after a rule is added with a past start date
-  // (months missed while the app wasn't opened are caught up too).
+  // Repeating operations come due on their day: on start and when the date
+  // changes while the app is open (months missed while the app wasn't opened
+  // are caught up too).
   useEffect(() => {
-    let added = 0;
-    try {
-      added = storage.applyRecurring(today);
-    } catch {
-      // Storage full/unavailable: nothing is written (all-or-nothing); retried next time.
-      return;
-    }
+    const added = applyDueRecurring();
     refreshRecurring();
     if (added > 0) {
       refreshTransactions();
-      showToast({ message: t.toasts.recurringAdded(added) });
+      // Informational: never pushes an "Отменить" toast off the screen.
+      showToast({ message: t.toasts.recurringAdded(added), passive: true });
     }
-  }, [today, recurringRules.length, refreshRecurring, refreshTransactions, showToast]);
+  }, [today, refreshRecurring, refreshTransactions, showToast]);
 
   // Another tab (or the installed app next to a browser tab) changed the data:
   // re-read it, so this tab never shows — or later overwrites — stale data.
@@ -122,7 +140,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       settings: currentSettings,
       updateSettings,
       recurringRules,
-      addRecurringRule,
+      startRecurring,
       removeRecurringRule,
       refresh,
     }),
@@ -145,7 +163,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentSettings,
       updateSettings,
       recurringRules,
-      addRecurringRule,
+      startRecurring,
       removeRecurringRule,
       refresh,
     ]

@@ -153,3 +153,10 @@ describe("tab switches", () => {
     expect(indicator.style.transform).toBe("translateX(300%)");
   });
 });
+
+describe("budget progress bar at 0%", () => {
+  it("has no fill-in to wait for", () => {
+    act(() => root.render(<ProgressBar percentage={0} status="normal" introKey="test:zero" />));
+    expect(bar().className).toContain("duration-[400ms]");
+  });
+});

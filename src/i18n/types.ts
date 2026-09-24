@@ -151,6 +151,7 @@ export interface Dictionary {
     allDataDeleted: string;
     recurringCreated: string;
     recurringAdded: (count: number) => string;
+    recurringCaughtUp: (count: number) => string;
     recurringStopped: string;
   };
   analytics: {

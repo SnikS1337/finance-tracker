@@ -29,7 +29,7 @@ export function AppShell() {
     editTransaction,
     removeTransaction,
     restoreTransaction,
-    addRecurringRule,
+    startRecurring,
   } = useAppData();
   const { showToast } = useToast();
   const { pathname } = useLocation();
@@ -90,20 +90,25 @@ export function AppShell() {
             // The first occurrence is this operation itself; the rule then adds
             // one on the same day every month (catching up if the date is in the past).
             const ruleId = newId();
-            const added = addTransaction({ ...input, recurringId: ruleId });
-            rowMotion.markAdded(added.id);
-            addRecurringRule({
-              id: ruleId,
-              type: input.type,
-              amount: input.amount,
-              categoryId: input.categoryId,
-              ...(input.note ? { note: input.note } : {}),
-              dayOfMonth: fromDateKey(input.date).getDate(),
-              startDate: input.date,
-              lastDate: input.date,
-              createdAt: added.createdAt,
-            });
-            showToast({ message: t.toasts.recurringCreated + budgetNote([...transactions, added]) });
+            const now = new Date().toISOString();
+            const first: Transaction = { id: newId(), ...input, recurringId: ruleId, createdAt: now, updatedAt: now };
+            const caughtUp = startRecurring(
+              {
+                id: ruleId,
+                type: input.type,
+                amount: input.amount,
+                categoryId: input.categoryId,
+                ...(input.note ? { note: input.note } : {}),
+                dayOfMonth: fromDateKey(input.date).getDate(),
+                startDate: input.date,
+                lastDate: input.date,
+                createdAt: now,
+              },
+              first
+            );
+            rowMotion.markAdded(first.id);
+            const extra = caughtUp > 0 ? ` · ${t.toasts.recurringCaughtUp(caughtUp)}` : "";
+            showToast({ message: t.toasts.recurringCreated + extra + budgetNote([...transactions, first]) });
           } else {
             const added = addTransaction(input);
             rowMotion.markAdded(added.id);

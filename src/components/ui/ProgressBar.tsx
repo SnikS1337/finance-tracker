@@ -18,6 +18,9 @@ const introPlayed = new Set<string>();
 
 type Phase = "empty" | "filling" | "idle";
 
+/** Intro duration + the longest stagger delay, with some slack. */
+const FILL_FALLBACK_MS = 1_000;
+
 /**
  * - First show in this launch (with an `introKey`): fills 0 → value (~600 ms).
  * - Afterwards / on return to the screen: drawn in place.
@@ -29,8 +32,10 @@ type Phase = "empty" | "filling" | "idle";
  */
 export function ProgressBar({ percentage, status, introKey }: { percentage: number; status: BudgetStatus; introKey?: string }) {
   const clamped = Math.min(100, Math.max(0, percentage));
+  // Nothing to fill at 0% (a fresh month): no intro, or the bar would wait for a
+  // transition that never happens.
   const [phase, setPhase] = useState<Phase>(() =>
-    introKey !== undefined && !introPlayed.has(introKey) && !prefersReducedMotion() ? "empty" : "idle"
+    introKey !== undefined && !introPlayed.has(introKey) && clamped > 0 && !prefersReducedMotion() ? "empty" : "idle"
   );
 
   useEffect(() => {
@@ -46,6 +51,13 @@ export function ProgressBar({ percentage, status, introKey }: { percentage: numb
     return () => window.cancelAnimationFrame(id);
   }, [phase, introKey]);
 
+  // Back to normal speed even if `transitionend` never comes (hidden tab, value unchanged).
+  useEffect(() => {
+    if (phase !== "filling") return;
+    const id = window.setTimeout(() => setPhase("idle"), FILL_FALLBACK_MS);
+    return () => window.clearTimeout(id);
+  }, [phase]);
+
   const scale = phase === "empty" ? 0 : clamped / 100;
 
   return (
@@ -59,7 +71,8 @@ export function ProgressBar({ percentage, status, introKey }: { percentage: numb
       <div
         className={cn(
           "h-full w-full origin-left rounded-full transition-[transform,background-color] ease-calm-out",
-          phase === "filling" ? "duration-[600ms]" : "duration-[400ms]",
+          // The first fill waits for its card's staggered entrance (Dashboard).
+          phase === "filling" ? "duration-[600ms] [transition-delay:var(--stagger,0ms)]" : "duration-[400ms]",
           statusColor[status]
         )}
         style={{ transform: `scaleX(${scale})` }}

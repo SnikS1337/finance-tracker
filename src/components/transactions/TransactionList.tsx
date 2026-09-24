@@ -179,17 +179,11 @@ function SwipeableTransactionRow({
     row.dataset.armed = armed ? "true" : "false";
   };
 
-  const collapse = useCallback(
-    (done: () => void) => {
-      collapseAnim.current = collapseElement(foldTarget(containerRef.current, isOnly), done);
-    },
-    [isOnly]
-  );
-
+  // Re-registered every render so the list always calls the current closure.
   useLayoutEffect(() => {
     registerCollapse(transaction.id, collapse);
     return () => registerCollapse(transaction.id, null);
-  }, [registerCollapse, transaction.id, collapse]);
+  });
 
   // Appearing: unfold if it's back from "Отменить", glow briefly if just added.
   useLayoutEffect(() => {
@@ -243,6 +237,27 @@ function SwipeableTransactionRow({
     };
   };
 
+  /**
+   * Folds the row away, then runs `remove`. Normally the row unmounts right
+   * after; if it's still here shortly after (the parent kept it, or the delete
+   * failed), it unfolds and slides back instead of staying folded or half-open.
+   */
+  const collapse = (remove: () => void) => {
+    collapseAnim.current = collapseElement(foldTarget(containerRef.current, isOnly), () => {
+      try {
+        remove();
+      } finally {
+        window.setTimeout(() => {
+          if (!containerRef.current?.isConnected) return;
+          collapseAnim.current?.cancel();
+          collapseAnim.current = null;
+          deleting.current = false;
+          if (offset.current !== 0) animateTo([offset.current, 0], null, RETURN_MS, EASE_CALM_OUT);
+        }, 400);
+      }
+    });
+  };
+
   const release = () => {
     const x = offset.current;
     if (onDelete && x <= -DELETE_THRESHOLD) {
@@ -252,18 +267,7 @@ function SwipeableTransactionRow({
       vibrate(15);
       animateTo([x, x - 4, x + 3, x], [0, 0.32, 0.68, 1], SETTLE_MS, "cubic-bezier(0.33, 1, 0.68, 1)", () => {
         // Fold the row away, then delete it.
-        collapse(() => {
-          onDelete();
-          // Normally the row unmounts right after onDelete. If it's still here
-          // (the parent kept it), unfold it and don't leave it stuck half-open.
-          window.setTimeout(() => {
-            if (!rowRef.current?.isConnected) return;
-            collapseAnim.current?.cancel();
-            collapseAnim.current = null;
-            deleting.current = false;
-            animateTo([offset.current, 0], null, RETURN_MS, EASE_CALM_OUT);
-          }, 400);
-        });
+        collapse(onDelete);
       });
       return;
     }

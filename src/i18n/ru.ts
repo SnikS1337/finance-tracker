@@ -144,6 +144,7 @@ export const ru: Dictionary = {
     allDataDeleted: "Все данные удалены",
     recurringCreated: "Регулярная операция создана",
     recurringAdded: (count) => `Добавлены регулярные операции: ${count}`,
+    recurringCaughtUp: (count) => `+${count} за прошлые месяцы`,
     recurringStopped: "Повтор остановлен",
   },
   analytics: {

@@ -212,6 +212,17 @@ export const deleteBudget = budgetStore.remove;
 
 export const getRecurringRules = recurringStore.getAll;
 export const createRecurringRule = recurringStore.create;
+
+/**
+ * Starts a repeating operation: its first occurrence and the rule are written
+ * together, so a full storage can't leave an operation pointing at a missing rule.
+ */
+export function createRecurring(rule: RecurringRule, first: Transaction): void {
+  writeAllOrNothing([
+    [KEYS.transactions, [...getTransactions(), first]],
+    [KEYS.recurring, [...getRecurringRules(), rule]],
+  ]);
+}
 export const deleteRecurringRule = recurringStore.remove;
 
 /**
