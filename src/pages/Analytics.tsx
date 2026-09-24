@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
-import { usePeriod } from "../hooks/usePeriod";
+import { periodSearch, useUrlPeriod } from "../hooks/usePeriod";
 import { PeriodSelector } from "../components/period/PeriodSelector";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
@@ -16,7 +16,7 @@ import { t } from "../i18n";
 
 export default function Analytics() {
   const { transactions, categories } = useAppData();
-  const period = usePeriod("thisMonth");
+  const period = useUrlPeriod("thisMonth");
   const navigate = useNavigate();
 
   const { range } = period;
@@ -45,6 +45,12 @@ export default function Analytics() {
     };
   }, [transactions, range]);
   const { summary, comparison } = data;
+
+  // Opening a category keeps the period you were looking at.
+  const openCategory = (categoryId: string) => {
+    const extra = periodSearch(period);
+    navigate(`/transactions?category=${categoryId}${extra ? `&${extra}` : ""}`);
+  };
 
   if (transactions.length === 0) {
     return (
@@ -95,14 +101,14 @@ export default function Analytics() {
         totals={summary.expenseByCategory}
         categories={categories}
         emptyMessage={t.categoryBreakdown.expenseEmptyHint}
-        onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
+        onSelectCategory={openCategory}
       />
       <CategoryDonut
         title={t.categoryBreakdown.incomeByCategory}
         totals={summary.incomeByCategory}
         categories={categories}
         emptyMessage={t.categoryBreakdown.incomeEmptyHint}
-        onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
+        onSelectCategory={openCategory}
       />
     </div>
   );

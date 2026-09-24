@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
-import { usePeriod } from "../hooks/usePeriod";
+import { useUrlPeriod } from "../hooks/usePeriod";
 import { PeriodSelector } from "../components/period/PeriodSelector";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -20,7 +20,7 @@ export default function Transactions() {
   const { transactions, categories, removeTransaction, restoreTransaction } = useAppData();
   const { openAdd, openEdit } = useTransactionSheetActions();
   const { showToast } = useToast();
-  const period = usePeriod("thisMonth");
+  const period = useUrlPeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [sort, setSort] = useState<SortOption>("newest");
@@ -98,7 +98,19 @@ export default function Transactions() {
         </select>
         <select
           value={categoryFilter}
-          onChange={(e) => setSearchParams(e.target.value === "all" ? {} : { category: e.target.value })}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Only touch `category`; the period lives in the same query string.
+            setSearchParams(
+              (prev) => {
+                const params = new URLSearchParams(prev);
+                if (value === "all") params.delete("category");
+                else params.set("category", value);
+                return params;
+              },
+              { replace: true }
+            );
+          }}
           className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm dark:border-neutral-800 dark:bg-surface-dark-subtle"
         >
           <option value="all">{t.transactionsPage.allCategories}</option>

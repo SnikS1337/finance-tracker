@@ -31,6 +31,8 @@ export function PeriodSelector({ value, onChange, customStart, customEnd, onCust
         {PRESETS.map((p) => (
           <button
             key={p.value}
+            type="button"
+            aria-pressed={value === p.value}
             onClick={() => onChange(p.value)}
             className={cn(
               "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 active:scale-[0.97]",
