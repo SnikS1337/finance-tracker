@@ -82,7 +82,7 @@ export const ru: Dictionary = {
   },
   transactionsPage: {
     title: "Операции",
-    searchPlaceholder: "Поиск по категории или сумме",
+    searchPlaceholder: "Поиск по категории, заметке или сумме",
     allTypes: "Все типы",
     expensesOnly: "Расходы",
     incomeOnly: "Доходы",
