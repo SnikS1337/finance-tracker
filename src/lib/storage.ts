@@ -24,7 +24,19 @@ const KEYS = {
   recurring: "pft:recurring",
 } as const;
 
-class StorageUnavailableError extends Error {
+/**
+ * A write to storage failed (full, unavailable, blocked). The message is
+ * user-facing; nothing was changed. The UI reports these and keeps the user's
+ * input (see AppDataContext).
+ */
+export class StorageWriteError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StorageWriteError";
+  }
+}
+
+class StorageUnavailableError extends StorageWriteError {
   constructor() {
     super(t.errors.storageUnavailable);
     this.name = "StorageUnavailableError";
@@ -68,9 +80,7 @@ function writeJSON<T>(key: string, value: T): void {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch (err) {
     // Most likely quota exceeded.
-    throw new Error(
-      err instanceof DOMException ? t.errors.storageFull : t.errors.saveFailed
-    );
+    throw new StorageWriteError(err instanceof DOMException ? t.errors.storageFull : t.errors.saveFailed);
   }
 }
 
@@ -94,7 +104,7 @@ function writeAllOrNothing(entries: Array<[key: string, value: unknown]>): void 
         // nothing sensible left to do if even that fails.
       }
     }
-    throw new Error(err instanceof DOMException ? t.errors.storageFull : t.errors.saveFailed);
+    throw new StorageWriteError(err instanceof DOMException ? t.errors.storageFull : t.errors.saveFailed);
   }
 }
 

@@ -117,7 +117,12 @@ export function TransactionFormSheet({
       return;
     }
     const trimmedNote = note.trim();
-    onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
+    try {
+      onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
+    } catch {
+      // Not saved (already reported, e.g. storage full): keep the form and what was typed.
+      return;
+    }
     onOpenChange(false);
   }
 
@@ -325,7 +330,11 @@ export function TransactionFormSheet({
               type="button"
               variant="danger"
               onClick={() => {
-                onDelete(transaction.id);
+                try {
+                  onDelete(transaction.id);
+                } catch {
+                  return; // not deleted (reported); keep the sheet open
+                }
                 onOpenChange(false);
               }}
             >
@@ -348,13 +357,17 @@ export function TransactionFormSheet({
             size="sm"
             className="w-full text-neutral-600 dark:text-neutral-300"
             onClick={() => {
-              onRepeat({
-                type: transaction.type,
-                amount: transaction.amount,
-                categoryId: transaction.categoryId,
-                date: todayKey(),
-                note: transaction.note,
-              });
+              try {
+                onRepeat({
+                  type: transaction.type,
+                  amount: transaction.amount,
+                  categoryId: transaction.categoryId,
+                  date: todayKey(),
+                  note: transaction.note,
+                });
+              } catch {
+                return; // not saved (reported); keep the sheet open
+              }
               onOpenChange(false);
             }}
           >

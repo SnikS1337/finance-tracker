@@ -120,30 +120,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, [refresh]);
 
-  const value: AppData = useMemo(
-    () => ({
+  const value: AppData = useMemo(() => {
+    // Every action that writes: if storage refuses the write (full, blocked),
+    // nothing has changed — tell the user, then rethrow so the caller stops
+    // (no "added" toast, the form stays open with what was typed).
+    const guard =
+      <A extends unknown[], R>(action: (...args: A) => R) =>
+      (...args: A): R => {
+        try {
+          return action(...args);
+        } catch (err) {
+          showToast({
+            message: err instanceof storage.StorageWriteError ? err.message : t.errors.saveFailed,
+            variant: "error",
+          });
+          throw err;
+        }
+      };
+    return {
       transactions: txList,
-      addTransaction,
-      editTransaction,
-      removeTransaction,
-      restoreTransaction,
-      reassignCategory,
+      addTransaction: guard(addTransaction),
+      editTransaction: guard(editTransaction),
+      removeTransaction: guard(removeTransaction),
+      restoreTransaction: guard(restoreTransaction),
+      reassignCategory: guard(reassignCategory),
       categories: categoryList,
-      addCategory,
-      editCategory,
-      archiveCategory,
-      unarchiveCategory,
-      removeCategory,
+      addCategory: guard(addCategory),
+      editCategory: guard(editCategory),
+      archiveCategory: guard(archiveCategory),
+      unarchiveCategory: guard(unarchiveCategory),
+      removeCategory: guard(removeCategory),
       budgets: budgetList,
-      upsertBudget,
-      removeBudget,
+      upsertBudget: guard(upsertBudget),
+      removeBudget: guard(removeBudget),
       settings: currentSettings,
-      updateSettings,
+      updateSettings: guard(updateSettings),
       recurringRules,
-      startRecurring,
-      removeRecurringRule,
+      startRecurring: guard(startRecurring),
+      removeRecurringRule: guard(removeRecurringRule),
       refresh,
-    }),
+    };
+  },
     [
       txList,
       addTransaction,
@@ -166,6 +183,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       startRecurring,
       removeRecurringRule,
       refresh,
+      showToast,
     ]
   );
 
