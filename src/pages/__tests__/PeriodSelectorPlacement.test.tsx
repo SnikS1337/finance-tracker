@@ -112,6 +112,8 @@ describe("PeriodSelector placement", () => {
     // Summary is computed for the current month without the selector.
     expect(text.includes(t.dashboard.periodCaption)).toBe(true);
     expect(text.includes("150")).toBe(true);
+    // "Spent today" line (the seeded expense is dated today).
+    expect(text.includes(t.dashboard.todaySpent(""))).toBe(true);
   });
 
   it("is still rendered in Analytics", async () => {

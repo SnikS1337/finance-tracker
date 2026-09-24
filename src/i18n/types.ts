@@ -56,6 +56,8 @@ export interface Dictionary {
     subtitle: string;
     /** Which period the dashboard summarises (it is fixed to the current month). */
     periodCaption: string;
+    todaySpent: (amount: string) => string;
+    todayNothingSpent: string;
     emptyTitle: string;
     emptyDescription: string;
     addTransactionCta: string;
@@ -117,8 +119,14 @@ export interface Dictionary {
     errorAmount: string;
     errorCategory: string;
     errorDate: string;
+    /** Button in the edit sheet: add the same operation again, dated today. */
+    repeatToday: string;
   };
   toasts: {
+    repeatedToday: string;
+    /** Appended to the "added/updated" toast when a budget crosses 80% / 100%. */
+    budgetUsage: (label: string, percent: number) => string;
+    categoryBudgetLabel: (categoryName: string) => string;
     transactionUpdated: string;
     expenseAdded: string;
     incomeAdded: string;

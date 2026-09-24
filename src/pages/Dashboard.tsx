@@ -9,6 +9,7 @@ import { Button } from "../components/ui/Button";
 import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
 import { useToday } from "../hooks/useToday";
 import { summarize } from "../lib/calculations";
+import { formatCurrency } from "../lib/currency";
 import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
 import { fromDateKey, getPresetRange } from "../lib/date-utils";
 import { t } from "../i18n";
@@ -32,6 +33,8 @@ export default function Dashboard() {
     return { summary, series: buildSpendingSeriesFromDaily(summary.dailyExpenses) };
   }, [transactions, range]);
 
+  const spentToday = summary.dailyExpenses.get(today) ?? 0;
+
   if (transactions.length === 0) {
     return (
       <div className="pt-10">
@@ -49,6 +52,9 @@ export default function Dashboard() {
       <div>
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.periodCaption}</p>
+        <p className="mt-1 text-sm font-medium tabular-nums text-neutral-700 dark:text-neutral-300">
+          {spentToday > 0 ? t.dashboard.todaySpent(formatCurrency(spentToday)) : t.dashboard.todayNothingSpent}
+        </p>
       </div>
 
       <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />

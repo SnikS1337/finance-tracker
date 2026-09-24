@@ -340,7 +340,9 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
         );
         return (
           <div key={date}>
-            <div className="mb-2 flex items-center justify-between px-1">
+            {/* Sticky day header: stays visible while scrolling through a long day.
+                Its background matches the page so rows slide underneath cleanly. */}
+            <div className="sticky top-[env(safe-area-inset-top,0px)] z-10 -mx-1 mb-1 flex items-center justify-between bg-surface-subtle/95 px-2 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-surface-subtle/80 dark:bg-surface-dark/95 dark:supports-[backdrop-filter]:bg-surface-dark/80">
               <h3 className="text-sm font-medium text-neutral-500 dark:text-neutral-400">{groupLabel(date)}</h3>
               <span className="text-xs text-neutral-400 dark:text-neutral-500">
                 {formatSignedCurrency(Math.abs(dayTotal), dayTotal >= 0 ? "income" : "expense")}

@@ -9,6 +9,7 @@ import { Button } from "../components/ui/Button";
 import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
 import { useToast } from "../hooks/useToast";
 import { isDateKeyInRange } from "../lib/date-utils";
+import { matchesSearch } from "../lib/search";
 import type { TransactionType } from "../types";
 import { Search } from "lucide-react";
 import { t } from "../i18n";
@@ -39,16 +40,11 @@ export default function Transactions() {
   );
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
     let list = transactions.filter((tx) => {
       if (!isDateKeyInRange(tx.date, period.range)) return false;
       if (typeFilter !== "all" && tx.type !== typeFilter) return false;
       if (categoryFilter !== "all" && tx.categoryId !== categoryFilter) return false;
-      if (q) {
-        const name = categoryById.get(tx.categoryId)?.name.toLowerCase() ?? "";
-        if (!name.includes(q)) return false;
-      }
-      return true;
+      return matchesSearch(tx, categoryById.get(tx.categoryId)?.name ?? "", query);
     });
 
     list = list.slice().sort((a, b) => {

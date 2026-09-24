@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, RotateCcw } from "lucide-react";
 import { Sheet } from "../ui/Sheet";
 import { Button } from "../ui/Button";
 import { CategoryPicker } from "../categories/CategoryPicker";
-import { formatAmountInput, parseAmountInput } from "../../lib/currency";
-import { todayKey } from "../../lib/date-utils";
+import { formatAmountInput, formatRubEquivalent, parseAmountInput } from "../../lib/currency";
+import { subDays, toDateKey, todayKey } from "../../lib/date-utils";
+import { useExchangeRate } from "../../hooks/useExchangeRate";
 import type { Category, NewTransactionInput, Transaction, TransactionType } from "../../types";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
@@ -18,6 +19,8 @@ interface Props {
   initialType?: TransactionType;
   onSubmit: (input: NewTransactionInput) => void;
   onDelete?: (id: string) => void;
+  /** Edit mode: add the same operation again, dated today. */
+  onRepeat?: (input: NewTransactionInput) => void;
 }
 
 const TYPE_LABEL: Record<TransactionType, string> = {
@@ -38,6 +41,7 @@ export function TransactionFormSheet({
   initialType = "expense",
   onSubmit,
   onDelete,
+  onRepeat,
 }: Props) {
   const isEditing = !!transaction;
   const [type, setType] = useState<TransactionType>(initialType);
@@ -45,6 +49,7 @@ export function TransactionFormSheet({
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState(todayKey());
   const [error, setError] = useState<string | null>(null);
+  const rate = useExchangeRate();
 
   // Resets the form to match whatever is being opened (blank for "add", populated
   // for "edit"). Deliberate: this synchronizes local form state with the `transaction`
@@ -67,6 +72,11 @@ export function TransactionFormSheet({
   }, [open, transaction, initialType]);
 
   const categoriesForType = categories.filter((c) => c.type === type);
+  const today = todayKey();
+  const quickDates = [
+    { key: today, label: t.common.today },
+    { key: toDateKey(subDays(new Date(), 1)), label: t.common.yesterday },
+  ];
 
   function handleSubmit() {
     const amount = parseAmountInput(amountRaw);
@@ -145,6 +155,16 @@ export function TransactionFormSheet({
             />
             <span className="text-2xl font-semibold text-neutral-400">₫</span>
           </div>
+          {/* Live, display-only rouble equivalent (same rate as the summary cards). */}
+          <p
+            aria-live="polite"
+            className={cn(
+              "mt-1 h-4 px-1 text-xs tabular-nums text-neutral-400 transition-opacity duration-150 dark:text-neutral-500",
+              parseAmountInput(amountRaw) > 0 ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {parseAmountInput(amountRaw) > 0 ? formatRubEquivalent(parseAmountInput(amountRaw), rate) : ""}
+          </p>
         </div>
 
         <div>
@@ -158,14 +178,34 @@ export function TransactionFormSheet({
           <label htmlFor="date" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
             {t.transactionForm.dateLabel}
           </label>
-          <input
-            id="date"
-            type="date"
-            value={date}
-            max={todayKey()}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
-          />
+          <div className="flex gap-2">
+            {/* Quick picks for the two dates that cover almost every entry; the
+                calendar stays for anything older. */}
+            {quickDates.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={date === option.key}
+                onClick={() => setDate(option.key)}
+                className={cn(
+                  "shrink-0 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-150",
+                  date === option.key
+                    ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900"
+                    : "border-neutral-200 text-neutral-600 hover:border-neutral-300 dark:border-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-700"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+            <input
+              id="date"
+              type="date"
+              value={date}
+              max={todayKey()}
+              onChange={(e) => setDate(e.target.value)}
+              className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+            />
+          </div>
         </div>
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -191,6 +231,22 @@ export function TransactionFormSheet({
                 : t.transactionForm.addExpenseCta}
           </Button>
         </div>
+
+        {isEditing && onRepeat && transaction && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full text-neutral-600 dark:text-neutral-300"
+            onClick={() => {
+              onRepeat({ type: transaction.type, amount: transaction.amount, categoryId: transaction.categoryId, date: todayKey() });
+              onOpenChange(false);
+            }}
+          >
+            <RotateCcw size={15} aria-hidden="true" />
+            {t.transactionForm.repeatToday}
+          </Button>
+        )}
       </div>
     </Sheet>
   );
