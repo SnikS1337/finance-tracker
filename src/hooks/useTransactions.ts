@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Transaction, NewTransactionInput } from "../types";
 import * as storage from "../lib/storage";
+import { newId } from "../lib/id";
 
 export function useTransactions() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => storage.getTransactions());
@@ -9,7 +10,7 @@ export function useTransactions() {
 
   const addTransaction = useCallback((input: NewTransactionInput) => {
     const now = new Date().toISOString();
-    const tx: Transaction = { id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now };
+    const tx: Transaction = { id: newId(), ...input, createdAt: now, updatedAt: now };
     storage.createTransaction(tx);
     refresh();
     return tx;

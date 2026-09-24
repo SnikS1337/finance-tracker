@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Category, NewCategoryInput } from "../types";
 import * as storage from "../lib/storage";
+import { newId } from "../lib/id";
 
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>(() => storage.getCategories());
@@ -9,7 +10,7 @@ export function useCategories() {
 
   const addCategory = useCallback((input: NewCategoryInput) => {
     const category: Category = {
-      id: crypto.randomUUID(),
+      id: newId(),
       ...input,
       createdAt: new Date().toISOString(),
     };

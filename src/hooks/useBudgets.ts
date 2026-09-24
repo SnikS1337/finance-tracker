@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import type { Budget, NewBudgetInput } from "../types";
 import * as storage from "../lib/storage";
+import { newId } from "../lib/id";
 
 export function useBudgets() {
   const [budgets, setBudgets] = useState<Budget[]>(() => storage.getBudgets());
@@ -19,7 +20,7 @@ export function useBudgets() {
         if (dupe) {
           storage.updateBudget(dupe.id, input);
         } else {
-          storage.createBudget({ id: crypto.randomUUID(), ...input, createdAt: now, updatedAt: now });
+          storage.createBudget({ id: newId(), ...input, createdAt: now, updatedAt: now });
         }
       }
       refresh();

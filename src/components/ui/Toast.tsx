@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 import { ToastContext, type ToastItem } from "./toastStore";
+import { newId } from "../../lib/id";
 
 // Matches the "toast-out" animation duration in tailwind.config.js.
 const EXIT_ANIMATION_MS = 220;
@@ -55,7 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       removeTimers.current.forEach((timer) => clearTimeout(timer));
       removeTimers.current.clear();
 
-      const id = crypto.randomUUID();
+      const id = newId();
       setLeavingIds(new Set());
       setToasts([{ ...toast, id }]);
 
