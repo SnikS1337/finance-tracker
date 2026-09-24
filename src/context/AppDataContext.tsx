@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCategories } from "../hooks/useCategories";
 import { useBudgets } from "../hooks/useBudgets";
@@ -43,6 +43,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     refreshBudgets();
     refreshSettings();
   }, [refreshTransactions, refreshCategories, refreshBudgets, refreshSettings]);
+
+  // Another tab (or the installed app next to a browser tab) changed the data:
+  // re-read it, so this tab never shows — or later overwrites — stale data.
+  // The `storage` event only fires in the *other* tabs, never in the writer.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      const relevant =
+        e.key === null || // localStorage.clear() in the other tab
+        (e.key.startsWith("pft:") && e.key !== "pft:__test__" && !e.key.startsWith("pft:exchangeRate"));
+      if (relevant) refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [refresh]);
 
   const value: AppData = useMemo(
     () => ({
