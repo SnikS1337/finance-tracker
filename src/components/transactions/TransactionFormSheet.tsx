@@ -22,6 +22,8 @@ interface Props {
   onDelete?: (id: string) => void;
   /** Edit mode: add the same operation again, dated today. */
   onRepeat?: (input: NewTransactionInput) => void;
+  /** Opens category management (offered when there's no category to pick). */
+  onManageCategories?: () => void;
 }
 
 const TYPE_LABEL: Record<TransactionType, string> = {
@@ -43,6 +45,7 @@ export function TransactionFormSheet({
   onSubmit,
   onDelete,
   onRepeat,
+  onManageCategories,
 }: Props) {
   const isEditing = !!transaction;
   const [type, setType] = useState<TransactionType>(initialType);
@@ -201,7 +204,13 @@ export function TransactionFormSheet({
           <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
             {t.transactionForm.categoryLabel}
           </span>
-          <CategoryPicker categories={categoriesForType} selectedId={categoryId} onSelect={setCategoryId} />
+          <CategoryPicker
+            categories={categoriesForType}
+            selectedId={categoryId}
+            onSelect={setCategoryId}
+            type={type}
+            onManageCategories={onManageCategories}
+          />
         </div>
 
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800">

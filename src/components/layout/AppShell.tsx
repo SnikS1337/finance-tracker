@@ -1,5 +1,5 @@
 import { Suspense, useLayoutEffect, useMemo } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
 import { UpdateBanner } from "./UpdateBanner";
@@ -33,6 +33,7 @@ export function AppShell() {
   } = useAppData();
   const { showToast } = useToast();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const today = useToday();
   const monthRange = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
 
@@ -115,6 +116,10 @@ export function AppShell() {
             const note = budgetNote([...transactions, added]);
             showToast({ message: (input.type === "income" ? t.toasts.incomeAdded : t.toasts.expenseAdded) + note });
           }
+        }}
+        onManageCategories={() => {
+          close();
+          navigate("/settings?section=categories");
         }}
         onRepeat={(input) => {
           const added = addTransaction(input);

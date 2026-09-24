@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { CategoryManager } from "../components/categories/CategoryManager";
 import { BudgetManager } from "../components/budgets/BudgetManager";
@@ -11,6 +13,16 @@ import { t } from "../i18n";
 
 export default function Settings() {
   const { settings, updateSettings } = useAppData();
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get("section");
+
+  // `?section=categories` (e.g. from the form when there's no category to pick)
+  // brings that section into view. A normal effect runs after AppShell's
+  // scroll-to-top on navigation, so it wins.
+  useEffect(() => {
+    if (!section) return;
+    document.getElementById(`settings-${section}`)?.scrollIntoView?.({ block: "start" });
+  }, [section]);
 
   return (
     <div className="space-y-6">
@@ -32,7 +44,7 @@ export default function Settings() {
         <RecurringManager />
       </section>
 
-      <section className="space-y-3">
+      <section id="settings-categories" className="scroll-mt-4 space-y-3">
         <h2 className="px-1 text-sm font-semibold text-neutral-500 dark:text-neutral-400">
           {t.settings.categoriesSection}
         </h2>

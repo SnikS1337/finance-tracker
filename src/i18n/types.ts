@@ -113,6 +113,9 @@ export interface Dictionary {
     income: string;
     amountLabel: string;
     categoryLabel: string;
+    noCategories: (type: "expense" | "income") => string;
+    noCategoriesHint: string;
+    noCategoriesCta: string;
     dateLabel: string;
     saveChanges: string;
     addExpenseCta: string;

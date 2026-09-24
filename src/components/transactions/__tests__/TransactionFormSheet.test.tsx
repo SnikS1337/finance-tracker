@@ -165,3 +165,13 @@ describe("TransactionFormSheet", () => {
     expect(buttonByText("Повторить сегодня")).toBeNull();
   });
 });
+
+describe("TransactionFormSheet without categories", () => {
+  it("explains why nothing can be picked and offers to open category management", () => {
+    const onManageCategories = vi.fn();
+    render({ categories: [{ ...categories[0], isArchived: true }, categories[1]], onManageCategories });
+    expect(document.body.textContent).toContain("Нет категорий расходов");
+    click(buttonByText("Открыть категории"));
+    expect(onManageCategories).toHaveBeenCalledTimes(1);
+  });
+});
