@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
 import { Repeat, Trash2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import type { Category, Transaction } from "../../types";
@@ -7,6 +7,8 @@ import { fromDateKey } from "../../lib/date-utils";
 import { cn } from "../../lib/cn";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { AXIS_LOCK_PX, DELETE_THRESHOLD, swipeOffsetForDrag } from "./swipePhysics";
+import { rowMotion } from "./rowMotion";
+import { canAnimate, EASE_CALM_IN, EASE_CALM_OUT, prefersReducedMotion, vibrate } from "../../lib/motion";
 import { t, dateLocale } from "../../i18n";
 
 function groupLabel(dateKey: string): string {
@@ -22,10 +24,57 @@ function groupLabel(dateKey: string): string {
 
 const RETURN_MS = 300;
 const SETTLE_MS = 240;
-const EASE_CALM_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+/** A deleted row folds away before it leaves the list… */
+const COLLAPSE_MS = 220;
+/** …and unfolds back into place on "Отменить". */
+const EXPAND_MS = 280;
+const HIGHLIGHT_MS = 1400;
 
-function prefersReducedMotion(): boolean {
-  return typeof window !== "undefined" && (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+/**
+ * The element that folds/unfolds for a row: the row itself, or the whole day
+ * group when it's the day's only operation (so the day header goes with it).
+ */
+function foldTarget(row: HTMLElement | null, isOnly: boolean): HTMLElement | null {
+  if (!row) return null;
+  return (isOnly ? row.closest<HTMLElement>("[data-day-group]") : null) ?? row;
+}
+
+/** Folds an element to zero height (then calls `done`). Returns the animation, if one runs. */
+function collapseElement(el: HTMLElement | null, done: () => void): Animation | null {
+  if (!canAnimate(el)) {
+    done();
+    return null;
+  }
+  const { height } = el.getBoundingClientRect();
+  const marginTop = getComputedStyle(el).marginTop;
+  el.style.overflow = "hidden";
+  const anim = el.animate(
+    [
+      { height: `${height}px`, marginTop, opacity: 1 },
+      { height: "0px", marginTop: "0px", opacity: 0 },
+    ],
+    { duration: COLLAPSE_MS, easing: EASE_CALM_IN, fill: "forwards" }
+  );
+  anim.onfinish = done;
+  return anim;
+}
+
+function expandElement(el: HTMLElement | null) {
+  if (!canAnimate(el)) return;
+  const { height } = el.getBoundingClientRect();
+  const marginTop = getComputedStyle(el).marginTop;
+  const previousOverflow = el.style.overflow;
+  el.style.overflow = "hidden";
+  const anim = el.animate(
+    [
+      { height: "0px", marginTop: "0px", opacity: 0 },
+      { height: `${height}px`, marginTop, opacity: 1 },
+    ],
+    { duration: EXPAND_MS, easing: EASE_CALM_OUT }
+  );
+  anim.onfinish = anim.oncancel = () => {
+    el.style.overflow = previousOverflow;
+  };
 }
 
 function transformFor(x: number): string {
@@ -80,19 +129,28 @@ function SwipeableTransactionRow({
   transaction,
   category,
   isFirst,
+  isOnly,
   showDeleteButton,
   onSelect,
   onDelete,
   onRequestDelete,
+  registerCollapse,
 }: {
   transaction: Transaction;
   category?: Category;
   isFirst: boolean;
+  /** The only operation of its day: folding it folds the whole day group. */
+  isOnly: boolean;
   showDeleteButton: boolean;
   onSelect: () => void;
   onDelete?: () => void;
   onRequestDelete: () => void;
+  /** Lets the list fold this row before a delete it confirmed itself (desktop dialog). */
+  registerCollapse: (id: string, collapse: ((done: () => void) => void) | null) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const highlightRef = useRef<HTMLSpanElement>(null);
+  const collapseAnim = useRef<Animation | null>(null);
   const rowRef = useRef<HTMLButtonElement>(null);
   // Offset is kept in a ref and written straight to the DOM: a drag must not
   // re-render React on every touchmove (that's what made it feel laggy), and
@@ -115,8 +173,37 @@ function SwipeableTransactionRow({
     if (!row) return;
     row.style.transform = transformFor(x);
     row.dataset.swiping = x < 0 ? "true" : "false";
-    row.dataset.armed = x <= -DELETE_THRESHOLD ? "true" : "false";
+    const armed = x <= -DELETE_THRESHOLD;
+    // A light tick when the swipe crosses the delete threshold (where supported).
+    if (armed && row.dataset.armed !== "true" && gesture.current.tracking) vibrate(8);
+    row.dataset.armed = armed ? "true" : "false";
   };
+
+  const collapse = useCallback(
+    (done: () => void) => {
+      collapseAnim.current = collapseElement(foldTarget(containerRef.current, isOnly), done);
+    },
+    [isOnly]
+  );
+
+  useLayoutEffect(() => {
+    registerCollapse(transaction.id, collapse);
+    return () => registerCollapse(transaction.id, null);
+  }, [registerCollapse, transaction.id, collapse]);
+
+  // Appearing: unfold if it's back from "Отменить", glow briefly if just added.
+  useLayoutEffect(() => {
+    if (rowMotion.takeRestored(transaction.id)) {
+      expandElement(foldTarget(containerRef.current, isOnly));
+    } else if (rowMotion.isJustAdded(transaction.id) && canAnimate(highlightRef.current)) {
+      highlightRef.current.animate([{ opacity: 1 }, { opacity: 1, offset: 0.35 }, { opacity: 0 }], {
+        duration: HIGHLIGHT_MS,
+        easing: "ease-out",
+      });
+    }
+    // Only on mount: later re-renders of the same row must not replay this.
+    // oxlint-disable-next-line react/exhaustive-deps
+  }, []);
 
   const stopAnimation = () => {
     const running = animation.current;
@@ -162,15 +249,21 @@ function SwipeableTransactionRow({
       // Delete semantics unchanged (release past the threshold deletes); the
       // row just "lands" first with a few-pixel overshoot and settle.
       deleting.current = true;
+      vibrate(15);
       animateTo([x, x - 4, x + 3, x], [0, 0.32, 0.68, 1], SETTLE_MS, "cubic-bezier(0.33, 1, 0.68, 1)", () => {
-        onDelete();
-        // Normally the row unmounts right after onDelete. If it's still here
-        // (the parent kept it), don't leave it stuck half-open.
-        window.setTimeout(() => {
-          if (!rowRef.current?.isConnected) return;
-          deleting.current = false;
-          animateTo([offset.current, 0], null, RETURN_MS, EASE_CALM_OUT);
-        }, 400);
+        // Fold the row away, then delete it.
+        collapse(() => {
+          onDelete();
+          // Normally the row unmounts right after onDelete. If it's still here
+          // (the parent kept it), unfold it and don't leave it stuck half-open.
+          window.setTimeout(() => {
+            if (!rowRef.current?.isConnected) return;
+            collapseAnim.current?.cancel();
+            collapseAnim.current = null;
+            deleting.current = false;
+            animateTo([offset.current, 0], null, RETURN_MS, EASE_CALM_OUT);
+          }, 400);
+        });
       });
       return;
     }
@@ -230,6 +323,7 @@ function SwipeableTransactionRow({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
         "group relative overflow-hidden",
         !isFirst && "border-t border-neutral-100 dark:border-neutral-800"
@@ -259,6 +353,12 @@ function SwipeableTransactionRow({
         )}
         style={{ touchAction: "pan-y" }}
       >
+        {/* Brief glow for a just-added operation (animated in JS, invisible otherwise). */}
+        <span
+          ref={highlightRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-sky-500/10 opacity-0 dark:bg-sky-400/15"
+        />
         {/* Delete zone rides on the row's trailing edge (it's part of the row,
             not a layer underneath it): at rest it sits fully outside the
             clipped area, so nothing can bleed through as hairlines around the
@@ -335,6 +435,17 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
   const isTouchPrimary = useIsTouchPrimary();
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const collapsers = useRef(new Map<string, (done: () => void) => void>());
+  const registerCollapse = useCallback((id: string, collapse: ((done: () => void) => void) | null) => {
+    if (collapse) collapsers.current.set(id, collapse);
+    else collapsers.current.delete(id);
+  }, []);
+
+  /** Remembers the row so "Отменить" can unfold it back, then deletes. */
+  const deleteNow = (tx: Transaction) => {
+    rowMotion.markRemoved(tx.id);
+    onDelete?.(tx);
+  };
 
   const groups = new Map<string, Transaction[]>();
   for (const tx of transactions) {
@@ -352,7 +463,7 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
           0
         );
         return (
-          <div key={date}>
+          <div key={date} data-day-group>
             {/* Sticky day header: stays visible while scrolling through a long day.
                 Its background matches the page so rows slide underneath cleanly. */}
             <div className="sticky top-[env(safe-area-inset-top,0px)] z-10 -mx-1 mb-1 flex items-center justify-between bg-surface-subtle/95 px-2 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-surface-subtle/80 dark:bg-surface-dark/95 dark:supports-[backdrop-filter]:bg-surface-dark/80">
@@ -370,10 +481,12 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
                   transaction={tx}
                   category={categoryById.get(tx.categoryId)}
                   isFirst={i === 0}
+                  isOnly={dayTransactions.length === 1}
                   showDeleteButton={!!onDelete && !isTouchPrimary}
                   onSelect={() => onSelect(tx)}
-                  onDelete={onDelete ? () => onDelete(tx) : undefined}
+                  onDelete={onDelete ? () => deleteNow(tx) : undefined}
                   onRequestDelete={() => setPendingDelete(tx)}
+                  registerCollapse={registerCollapse}
                 />
               ))}
             </div>
@@ -388,7 +501,11 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
         description={t.transactionsPage.deleteConfirmDescription}
         confirmLabel={t.common.delete}
         onConfirm={() => {
-          if (pendingDelete && onDelete) onDelete(pendingDelete);
+          if (!pendingDelete || !onDelete) return;
+          const tx = pendingDelete;
+          const collapse = collapsers.current.get(tx.id);
+          if (collapse) collapse(() => deleteNow(tx));
+          else deleteNow(tx);
         }}
       />
     </div>

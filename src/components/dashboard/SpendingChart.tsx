@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { BarShapeProps } from "recharts";
 import { Card } from "../ui/Card";
@@ -54,10 +55,20 @@ function ChartCanvas({ data, axisMax }: { data: DisplayPoint[]; axisMax: number 
   );
 }
 
+/**
+ * The bars grow in once, the first time a chart is shown in this app launch
+ * (CSS in index.css; Recharts' own animations stay off on purpose).
+ */
+let barsRevealed = false;
+
 export function SpendingChart({ data }: { data: ChartPoint[] }) {
   const prepared = prepareDisplayData(data);
+  const [reveal] = useState(() => !barsRevealed && data.length > 0);
+  useEffect(() => {
+    if (reveal) barsRevealed = true;
+  }, [reveal]);
   if (data.length === 0) {
     return <Card><h3 className="mb-3 text-sm font-semibold">{t.chart.spendingOverTime}</h3><EmptyState title={t.chart.notEnoughData} description={t.chart.notEnoughDataHint} /></Card>;
   }
-  return <Card><h3 className="mb-3 text-sm font-semibold">{t.chart.spendingOverTime}</h3><div className="h-56 w-full"><ChartCanvas data={prepared.data} axisMax={prepared.axisMax} /></div></Card>;
+  return <Card><h3 className="mb-3 text-sm font-semibold">{t.chart.spendingOverTime}</h3><div className={reveal ? "bars-reveal h-56 w-full" : "h-56 w-full"}><ChartCanvas data={prepared.data} axisMax={prepared.axisMax} /></div></Card>;
 }

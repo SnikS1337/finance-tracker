@@ -45,7 +45,7 @@ export function BudgetManager() {
   return (
     <div className="space-y-3">
       {overallBudget ? (
-        <BudgetCard progress={calculateBudgetProgress(overallBudget, transactions, range)} onEdit={() => openFor(undefined)} />
+        <BudgetCard progress={calculateBudgetProgress(overallBudget, transactions, range)} onEdit={() => openFor(undefined)} place="settings" />
       ) : (
         <Button variant="secondary" size="sm" onClick={() => openFor(undefined)}>
           {t.budgets.setMonthlyBudget}
@@ -60,6 +60,7 @@ export function BudgetManager() {
             progress={calculateBudgetProgress(b, transactions, range)}
             category={category}
             onEdit={() => openFor(b.categoryId)}
+            place="settings"
           />
         );
       })}

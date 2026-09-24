@@ -8,9 +8,11 @@ interface Props {
   progress: BudgetProgress;
   category?: Category | null;
   onEdit: () => void;
+  /** Where the card is shown ("dashboard" / "settings"): the bar fills in once per launch per place. */
+  place?: string;
 }
 
-export function BudgetCard({ progress, category, onEdit }: Props) {
+export function BudgetCard({ progress, category, onEdit, place }: Props) {
   const { budget, spent, percentage, status } = progress;
   return (
     <Card className="min-w-0 cursor-pointer" onClick={onEdit}>
@@ -37,7 +39,7 @@ export function BudgetCard({ progress, category, onEdit }: Props) {
           {Math.round(percentage)}%
         </span>
       </div>
-      <ProgressBar percentage={percentage} status={status} />
+      <ProgressBar percentage={percentage} status={status} introKey={place ? `${place}:${budget.id}` : undefined} />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
         <span className="min-w-0">{t.budgets.spent} {formatCurrency(spent)}</span>
         <span className="min-w-0">{t.budgets.of} {formatCurrency(budget.amount)}</span>

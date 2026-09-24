@@ -46,9 +46,9 @@ export function BudgetOverview({
   const openSettings = () => navigate("/settings");
   return (
     <section aria-label={t.dashboard.budgetsTitle} className="space-y-2.5">
-      {overall && <BudgetCard progress={overall} onEdit={openSettings} />}
+      {overall && <BudgetCard progress={overall} onEdit={openSettings} place="dashboard" />}
       {attention.map(({ progress, category }) => (
-        <BudgetCard key={progress.budget.id} progress={progress} category={category} onEdit={openSettings} />
+        <BudgetCard key={progress.budget.id} progress={progress} category={category} onEdit={openSettings} place="dashboard" />
       ))}
     </section>
   );

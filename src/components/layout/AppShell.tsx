@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
 import { UpdateBanner } from "./UpdateBanner";
+import { settleTabTransition } from "./tabTransition";
 import { TransactionFormSheet } from "../transactions/TransactionFormSheet";
 import { useTransactionSheet } from "../../hooks/useTransactionSheet";
 import { useAppData } from "../../hooks/useAppData";
@@ -14,6 +15,7 @@ import { orderCategoriesByUsage } from "../../lib/categoryOrder";
 import { findBudgetCrossing } from "../../lib/budgetAlerts";
 import { fromDateKey, getPresetRange } from "../../lib/date-utils";
 import { newId } from "../../lib/id";
+import { rowMotion } from "../transactions/rowMotion";
 import type { Transaction } from "../../types";
 import { t } from "../../i18n";
 
@@ -51,12 +53,15 @@ export function AppShell() {
   // Transactions list dropped you into the middle of Settings.
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
+    // A tab transition in progress can now capture the new page.
+    settleTabTransition();
   }, [pathname]);
 
   return (
     <div className="min-h-screen md:pl-60">
       <Sidebar onAdd={() => openAdd()} />
-      <main className="mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
+      {/* view-transition-name: page — the part that slides on tab switches (index.css). */}
+      <main className="page-transition mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
         {/* Keyed by route: an error on one page (e.g. a chunk that failed to load
             offline) must not stick around after navigating to another page. */}
         <ChunkErrorBoundary key={pathname}>
@@ -86,6 +91,7 @@ export function AppShell() {
             // one on the same day every month (catching up if the date is in the past).
             const ruleId = newId();
             const added = addTransaction({ ...input, recurringId: ruleId });
+            rowMotion.markAdded(added.id);
             addRecurringRule({
               id: ruleId,
               type: input.type,
@@ -100,16 +106,19 @@ export function AppShell() {
             showToast({ message: t.toasts.recurringCreated + budgetNote([...transactions, added]) });
           } else {
             const added = addTransaction(input);
+            rowMotion.markAdded(added.id);
             const note = budgetNote([...transactions, added]);
             showToast({ message: (input.type === "income" ? t.toasts.incomeAdded : t.toasts.expenseAdded) + note });
           }
         }}
         onRepeat={(input) => {
           const added = addTransaction(input);
+          rowMotion.markAdded(added.id);
           showToast({ message: t.toasts.repeatedToday + budgetNote([...transactions, added]) });
         }}
         onDelete={(id) => {
           const toRestore = state.transaction;
+          rowMotion.markRemoved(id);
           removeTransaction(id);
           showToast({
             message: t.toasts.transactionDeleted,

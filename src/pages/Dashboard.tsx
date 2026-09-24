@@ -49,7 +49,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-5">
+    // `stagger`: sections appear one after another (index.css).
+    <div className="stagger space-y-5">
       <div>
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.periodCaption}</p>

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { periodSearch, useUrlPeriod } from "../hooks/usePeriod";
@@ -12,6 +12,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { getComparisonRanges, formatRangeLabel } from "../lib/date-utils";
 import { summarize, calculateTotalExpenses, calculatePercentageChange } from "../lib/calculations";
 import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
+import { canAnimate, EASE_CALM_OUT } from "../lib/motion";
 import { t } from "../i18n";
 
 export default function Analytics() {
@@ -46,6 +47,19 @@ export default function Analytics() {
   }, [transactions, range]);
   const { summary, comparison } = data;
 
+  // Switching the period softly fades the results in instead of snapping
+  // (numbers glide on their own, see AnimatedNumber). Not on the first render.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const rangeKey = `${range.start.getTime()}_${range.end.getTime()}`;
+  const previousRangeKey = useRef(rangeKey);
+  useEffect(() => {
+    if (previousRangeKey.current === rangeKey) return;
+    previousRangeKey.current = rangeKey;
+    const el = resultsRef.current;
+    if (!canAnimate(el)) return;
+    el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 280, easing: EASE_CALM_OUT });
+  }, [rangeKey]);
+
   // Opening a category keeps the period you were looking at.
   const openCategory = (categoryId: string) => {
     const extra = periodSearch(period);
@@ -75,41 +89,43 @@ export default function Analytics() {
         onCustomChange={period.setCustomRange}
       />
 
-      <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
-      <QuickStats
-        averagePerDay={summary.averagePerDay}
-        medianPerDay={summary.medianPerDay}
-        transactionCount={summary.transactionCount}
-        spendingDays={summary.spendingDays}
-      />
-      <DayHighlightCards highest={summary.highest} lowest={summary.lowest} />
-
-      {comparison && (
-        <PeriodComparison
-          currentLabel={formatRangeLabel(comparison.current)}
-          previousLabel={formatRangeLabel(comparison.previous)}
-          current={comparison.currentExpenses}
-          previous={comparison.previousExpenses}
-          percentageChange={comparison.percentageChange}
+      <div ref={resultsRef} className="space-y-6">
+        <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
+        <QuickStats
+          averagePerDay={summary.averagePerDay}
+          medianPerDay={summary.medianPerDay}
+          transactionCount={summary.transactionCount}
+          spendingDays={summary.spendingDays}
         />
-      )}
+        <DayHighlightCards highest={summary.highest} lowest={summary.lowest} />
 
-      <SpendingChart data={data.series} />
+        {comparison && (
+          <PeriodComparison
+            currentLabel={formatRangeLabel(comparison.current)}
+            previousLabel={formatRangeLabel(comparison.previous)}
+            current={comparison.currentExpenses}
+            previous={comparison.previousExpenses}
+            percentageChange={comparison.percentageChange}
+          />
+        )}
 
-      <CategoryDonut
-        title={t.categoryBreakdown.spendingByCategory}
-        totals={summary.expenseByCategory}
-        categories={categories}
-        emptyMessage={t.categoryBreakdown.expenseEmptyHint}
-        onSelectCategory={openCategory}
-      />
-      <CategoryDonut
-        title={t.categoryBreakdown.incomeByCategory}
-        totals={summary.incomeByCategory}
-        categories={categories}
-        emptyMessage={t.categoryBreakdown.incomeEmptyHint}
-        onSelectCategory={openCategory}
-      />
+        <SpendingChart data={data.series} />
+
+        <CategoryDonut
+          title={t.categoryBreakdown.spendingByCategory}
+          totals={summary.expenseByCategory}
+          categories={categories}
+          emptyMessage={t.categoryBreakdown.expenseEmptyHint}
+          onSelectCategory={openCategory}
+        />
+        <CategoryDonut
+          title={t.categoryBreakdown.incomeByCategory}
+          totals={summary.incomeByCategory}
+          categories={categories}
+          emptyMessage={t.categoryBreakdown.incomeEmptyHint}
+          onSelectCategory={openCategory}
+        />
+      </div>
     </div>
   );
 }

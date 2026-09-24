@@ -1,24 +1,41 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { NAV_ITEMS, type NavItemConfig } from "./navItems";
+import { navIndex, useTabClick } from "./tabTransition";
 import { cn } from "../../lib/cn";
-import { scrollToTopSmooth } from "../../lib/scroll";
 import { t } from "../../i18n";
 
+/** Grid column of each tab: the middle column (2) is reserved for "+". */
+const TAB_COLUMN = [0, 1, 3, 4];
 
 export function BottomNav({ onAdd }: { onAdd: () => void }) {
+  const { pathname } = useLocation();
+  const active = navIndex(pathname);
+  const onTabClick = useTabClick();
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-neutral-800 dark:bg-surface-dark/95 md:hidden">
       {/* Five equal columns (the middle one reserved for "+") so every tab sits at
           a fixed, symmetric position. `justify-around` spaced items by their label
           widths, so "Операции" ended up farther from "+" than "Аналитика". */}
       <div className="relative mx-auto grid max-w-lg grid-cols-5 items-center px-2">
+        {/* Active-tab marker: glides between tabs (transform only). */}
+        {active >= 0 && (
+          <div aria-hidden className="pointer-events-none absolute inset-x-2 top-0">
+            <div
+              className="nav-indicator nav-indicator--bottom flex w-1/5 justify-center transition-transform duration-280 ease-calm-out"
+              style={{ transform: `translateX(${TAB_COLUMN[active] * 100}%)` }}
+            >
+              <span className="h-[3px] w-6 rounded-b-full bg-neutral-900 dark:bg-white" />
+            </div>
+          </div>
+        )}
         {NAV_ITEMS.slice(0, 2).map((item) => (
-          <NavItem key={item.to} {...item} />
+          <NavItem key={item.to} {...item} onClick={onTabClick(item.to)} />
         ))}
         <div aria-hidden />
         {NAV_ITEMS.slice(2).map((item) => (
-          <NavItem key={item.to} {...item} />
+          <NavItem key={item.to} {...item} onClick={onTabClick(item.to)} />
         ))}
         <button
           onClick={onAdd}
@@ -32,14 +49,12 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-function NavItem({ to, label, icon: Icon }: NavItemConfig) {
-  const { pathname } = useLocation();
+function NavItem({ to, label, icon: Icon, onClick }: NavItemConfig & { onClick: ReturnType<ReturnType<typeof useTabClick>> }) {
   return (
     <NavLink
       to={to}
       end={to === "/"}
-      // Tapping the tab you're already on scrolls it back to the top, like native tab bars.
-      onClick={() => pathname === to && scrollToTopSmooth()}
+      onClick={onClick}
       aria-label={label}
       className={({ isActive }) =>
         cn(
