@@ -141,10 +141,20 @@ function ensureInitialized(): void {
  * Get/save/create/update/delete for one stored list. `touch` lets a
  * collection stamp fields on update (e.g. `updatedAt`).
  */
-function collection<T extends { id: string }>(key: string, fallback: () => T[], touch: (item: T) => T = (item) => item) {
+function collection<T extends { id: string }>(
+  key: string,
+  fallback: () => T[],
+  isItem: (v: unknown) => v is T,
+  touch: (item: T) => T = (item) => item
+) {
+  // Read defensively: whatever is stored (hand-edited, half-written, from a
+  // buggy older version) must not crash the app. Not a list → the fallback;
+  // broken entries are skipped (and dropped at the next write).
   const getAll = (): T[] => {
     ensureInitialized();
-    return readJSON<T[]>(key, fallback());
+    const raw = readJSON<unknown>(key, null);
+    if (!Array.isArray(raw)) return fallback();
+    return raw.filter(isItem).map(withTimestamps);
   };
   const saveAll = (items: T[]): void => writeJSON(key, items);
   return {
@@ -172,10 +182,11 @@ function collection<T extends { id: string }>(key: string, fallback: () => T[], 
 
 const stampUpdatedAt = <T extends { updatedAt: string }>(item: T): T => ({ ...item, updatedAt: new Date().toISOString() });
 
-const transactionStore = collection<Transaction>(KEYS.transactions, () => [], stampUpdatedAt);
-const categoryStore = collection<Category>(KEYS.categories, () => DEFAULT_CATEGORIES);
-const budgetStore = collection<Budget>(KEYS.budgets, () => [], stampUpdatedAt);
-const recurringStore = collection<RecurringRule>(KEYS.recurring, () => []);
+// Validators are function declarations further down (hoisted).
+const transactionStore = collection<Transaction>(KEYS.transactions, () => [], isTransactionItem, stampUpdatedAt);
+const categoryStore = collection<Category>(KEYS.categories, () => DEFAULT_CATEGORIES, isCategoryItem);
+const budgetStore = collection<Budget>(KEYS.budgets, () => [], isBudgetItem, stampUpdatedAt);
+const recurringStore = collection<RecurringRule>(KEYS.recurring, () => [], isRecurringItem);
 
 // ---------- Transactions ----------
 
@@ -257,7 +268,14 @@ export function applyRecurring(today: string): number {
 
 export function getSettings(): Settings {
   ensureInitialized();
-  return readJSON<Settings>(KEYS.settings, DEFAULT_SETTINGS);
+  const raw = readJSON<unknown>(KEYS.settings, null);
+  if (!isObject(raw)) return DEFAULT_SETTINGS;
+  // Known fields with valid values only; anything else falls back to the default.
+  return {
+    theme: typeof raw.theme === "string" && THEMES.has(raw.theme) ? (raw.theme as Settings["theme"]) : DEFAULT_SETTINGS.theme,
+    onboarded: typeof raw.onboarded === "boolean" ? raw.onboarded : DEFAULT_SETTINGS.onboarded,
+    isDemoData: typeof raw.isDemoData === "boolean" ? raw.isDemoData : DEFAULT_SETTINGS.isDemoData,
+  };
 }
 
 export function saveSettings(settings: Settings): void {
@@ -291,11 +309,10 @@ function isValidDateKey(v: unknown): v is string {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(fromDateKey(v).getTime());
 }
 
-function isTransactionArray(v: unknown): v is Transaction[] {
+// ---------- Validation (used on import and on every read) ----------
+
+function isTransactionItem(tx: unknown): tx is Transaction {
   return (
-    Array.isArray(v) &&
-    v.every(
-      (tx) =>
         isObject(tx) &&
         isNonEmptyString(tx.id) &&
         isTransactionType(tx.type) &&
@@ -304,43 +321,31 @@ function isTransactionArray(v: unknown): v is Transaction[] {
         isValidDateKey(tx.date) &&
         (tx.note === undefined || (typeof tx.note === "string" && tx.note.length <= MAX_IMPORTED_NOTE)) &&
         (tx.recurringId === undefined || isNonEmptyString(tx.recurringId))
-    )
   );
 }
 
-function isCategoryArray(v: unknown): v is Category[] {
+function isCategoryItem(c: unknown): c is Category {
   return (
-    Array.isArray(v) &&
-    v.every(
-      (c) =>
         isObject(c) &&
         isNonEmptyString(c.id) &&
         typeof c.name === "string" &&
         typeof c.icon === "string" &&
         typeof c.color === "string" &&
         isTransactionType(c.type)
-    )
   );
 }
 
-function isBudgetArray(v: unknown): v is Budget[] {
+function isBudgetItem(b: unknown): b is Budget {
   return (
-    Array.isArray(v) &&
-    v.every(
-      (b) =>
         isObject(b) &&
         isNonEmptyString(b.id) &&
         isValidAmount(b.amount) &&
         (b.categoryId === undefined || isNonEmptyString(b.categoryId))
-    )
   );
 }
 
-function isRecurringArray(v: unknown): v is RecurringRule[] {
+function isRecurringItem(r: unknown): r is RecurringRule {
   return (
-    Array.isArray(v) &&
-    v.every(
-      (r) =>
         isObject(r) &&
         isNonEmptyString(r.id) &&
         isTransactionType(r.type) &&
@@ -352,8 +357,25 @@ function isRecurringArray(v: unknown): v is RecurringRule[] {
         (r.dayOfMonth as number) <= 31 &&
         isValidDateKey(r.startDate) &&
         isValidDateKey(r.lastDate)
-    )
   );
+}
+
+const arrayOf =
+  <T,>(isItem: (v: unknown) => v is T) =>
+  (v: unknown): v is T[] =>
+    Array.isArray(v) && v.every(isItem);
+const isTransactionArray = arrayOf(isTransactionItem);
+const isCategoryArray = arrayOf(isCategoryItem);
+const isBudgetArray = arrayOf(isBudgetItem);
+const isRecurringArray = arrayOf(isRecurringItem);
+
+/**
+ * `createdAt` isn't required (older data and hand-edited backups may lack it),
+ * but lists sort by it, so a missing one becomes "".
+ */
+function withTimestamps<T>(item: T): T {
+  const o = item as Record<string, unknown>;
+  return typeof o.createdAt === "string" ? item : ({ ...o, createdAt: "" } as T);
 }
 
 /** Only known settings fields with valid values survive; anything else falls back to the default. */
@@ -406,7 +428,7 @@ export function importBackup(data: unknown): void {
     });
   };
 
-  const categories = dedupe(backup.categories);
+  const categories = dedupe(backup.categories).map(withTimestamps);
   const categoryIds = new Set(categories.map((c) => c.id));
   // A category budget whose category isn't in the backup would show up as a
   // second, always-empty "monthly budget" — drop it rather than import junk.
@@ -418,7 +440,7 @@ export function importBackup(data: unknown): void {
   // so the current rules go too (they'd point at categories that may be gone).
   const entries: Array<[string, unknown]> = [
     [KEYS.categories, categories],
-    [KEYS.transactions, dedupe(backup.transactions)],
+    [KEYS.transactions, dedupe(backup.transactions).map(withTimestamps)],
     [KEYS.budgets, budgets],
     [KEYS.recurring, recurring],
   ];
