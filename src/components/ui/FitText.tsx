@@ -32,8 +32,8 @@ export function FitText({
   minScale?: number;
 }) {
   const content = text ?? (typeof children === "string" ? children : "");
-  // A little slack so bold/semibold glyphs never touch the edge.
-  const em = Math.max(1, estimateWidthEm(content) * 1.06);
+  // Slack for wider bold glyphs in some system fonts (checked in Chromium: 1.06 fits exactly).
+  const em = Math.max(1, estimateWidthEm(content) * 1.12);
   return (
     <span className={cn("block min-w-0 [container-type:inline-size]", className)}>
       <span
