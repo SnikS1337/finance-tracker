@@ -54,11 +54,16 @@ function seed(n) {
     await nav('Обзор', 'h1:has-text("Обзор")'); await page.waitForTimeout(500);
   }
   await nav('Операции', 'button[data-swiping]'); await page.waitForTimeout(500);
-  const before = await page.locator('button[data-swiping]').count();
-  await measure('Операции «Этот год»', () => page.getByRole('button', { name: 'Этот год', exact: true }).click(), () => page.waitForFunction(b => document.querySelectorAll('button[data-swiping]').length > b + 50, before, { timeout: 60000 }));
+  const sig = () => page.evaluate(() => [...document.querySelectorAll('[data-day-group] h3')].map(h => h.textContent).slice(-1)[0] + '|' + document.querySelectorAll('button[data-swiping]').length + ([...document.querySelectorAll('button')].find(b => b.textContent.startsWith('Показать'))?.textContent || ''));
+  const before = await sig();
+  await measure('Операции «Этот год»', () => page.getByRole('button', { name: 'Этот год', exact: true }).click(), () => page.waitForFunction(b => ([...document.querySelectorAll('[data-day-group] h3')].map(h => h.textContent).slice(-1)[0] + '|' + document.querySelectorAll('button[data-swiping]').length + ([...document.querySelectorAll('button')].find(b => b.textContent.startsWith('Показать'))?.textContent || '')) !== b, before, { timeout: 60000 }));
   console.log('  строк:', await page.locator('button[data-swiping]').count());
   await page.waitForTimeout(500);
-  await measure('поиск (1 символ → фильтр)', () => page.locator('input[placeholder*="Поиск"]').fill('з'), () => page.waitForTimeout(0));
+  await measure('поиск: буква в поле', () => page.locator('input[placeholder*="Поиск"]').fill('з'), () => page.waitForTimeout(0));
+  await page.waitForTimeout(1500);
+  const s2 = await sig();
+  await measure('поиск: список обновлён', () => page.locator('input[placeholder*="Поиск"]').fill('заметка 1'), () => page.waitForFunction(b => ([...document.querySelectorAll('[data-day-group] h3')].map(h => h.textContent).slice(-1)[0] + '|' + document.querySelectorAll('button[data-swiping]').length + ([...document.querySelectorAll('button')].find(b => b.textContent.startsWith('Показать'))?.textContent || '')) !== b, s2, { timeout: 60000 }));
+  await page.waitForTimeout(800);
   await measure('→ Обзор (с длинным списком)', () => page.getByRole('link', { name: 'Обзор' }).click(), () => page.locator('h1:has-text("Обзор")').waitFor());
   await browser.close();
 })().catch(e => { console.log('CRASH', e.message); process.exit(1); });
