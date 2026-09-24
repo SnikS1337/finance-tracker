@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { PeriodSelector } from "../dashboard/PeriodSelector";
@@ -7,14 +7,7 @@ import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";
 import { formatCurrency } from "../../lib/currency";
 import { formatRangeLabel } from "../../lib/date-utils";
-import {
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  calculateBalance,
-  calculateAverageDailyExpense,
-  calculateMedianDailyExpense,
-  calculateExpenseCategoryTotals,
-} from "../../lib/calculations";
+import { summarize } from "../../lib/calculations";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 
@@ -69,12 +62,11 @@ export function ReportGenerator() {
   }, []);
 
   const { range } = period;
-  const income = calculateTotalIncome(transactions, range);
-  const expenses = calculateTotalExpenses(transactions, range);
-  const balance = calculateBalance(transactions, range);
-  const avg = calculateAverageDailyExpense(transactions, range);
-  const median = calculateMedianDailyExpense(transactions, range);
-  const topCategories = calculateExpenseCategoryTotals(transactions, range).slice(0, 4);
+  const summary = useMemo(() => summarize(transactions, range), [transactions, range]);
+  const { income, expenses, balance } = summary;
+  const avg = summary.averagePerDay;
+  const median = summary.medianPerDay;
+  const topCategories = summary.expenseByCategory.slice(0, 4);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   async function handleDownload() {

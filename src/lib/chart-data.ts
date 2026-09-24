@@ -11,7 +11,12 @@ export interface ChartPoint {
 
 /** Buckets daily expense totals into days, weeks, or months depending on the span, so the chart stays readable. */
 export function buildSpendingSeries(transactions: Transaction[], range: DateRange): ChartPoint[] {
-  const daily = [...calculateDailyTotals(transactions, range).entries()].sort(([a], [b]) => a.localeCompare(b));
+  return buildSpendingSeriesFromDaily(calculateDailyTotals(transactions, range));
+}
+
+/** Same as `buildSpendingSeries`, from already-computed daily totals (e.g. `summarize().dailyExpenses`). */
+export function buildSpendingSeriesFromDaily(dailyTotals: Map<string, number>): ChartPoint[] {
+  const daily = [...dailyTotals.entries()].sort(([a], [b]) => a.localeCompare(b));
   if (daily.length === 0) return [];
 
   if (daily.length <= 31) {

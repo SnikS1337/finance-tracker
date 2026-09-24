@@ -9,21 +9,9 @@ import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts
 import { DayHighlightCards } from "../components/analytics/DayHighlightCards";
 import { PeriodComparison } from "../components/analytics/PeriodComparison";
 import { EmptyState } from "../components/ui/EmptyState";
-import { getPreviousRange, isDateKeyInRange, formatRangeLabel } from "../lib/date-utils";
-import {
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  calculateBalance,
-  calculateAverageDailyExpense,
-  calculateMedianDailyExpense,
-  calculateSpendingDaysCount,
-  calculateExpenseCategoryTotals,
-  calculateIncomeCategoryTotals,
-  calculateHighestSpendingDay,
-  calculateLowestSpendingDay,
-  calculatePercentageChange,
-} from "../lib/calculations";
-import { buildSpendingSeries } from "../lib/chart-data";
+import { getComparisonRanges, formatRangeLabel } from "../lib/date-utils";
+import { summarize, calculateTotalExpenses, calculatePercentageChange } from "../lib/calculations";
+import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
 import { t } from "../i18n";
 
 export default function Analytics() {
@@ -32,32 +20,31 @@ export default function Analytics() {
   const navigate = useNavigate();
 
   const { range } = period;
-  const isValidRange = !isNaN(range.start.getTime()) && !isNaN(range.end.getTime());
 
   // Depends on the memoized `range`, not the `period` object (a new object every
   // render), so the full analytics recalculation only runs when inputs change.
   const data = useMemo(() => {
-    const previousRange = isValidRange ? getPreviousRange(range) : range;
-    const expenses = calculateTotalExpenses(transactions, range);
-    const previousExpenses = calculateTotalExpenses(transactions, previousRange);
-    return {
-      income: calculateTotalIncome(transactions, range),
-      expenses,
-      balance: calculateBalance(transactions, range),
-      avg: calculateAverageDailyExpense(transactions, range),
-      median: calculateMedianDailyExpense(transactions, range),
-      spendingDays: calculateSpendingDaysCount(transactions, range),
-      transactionCount: transactions.filter((tx) => isDateKeyInRange(tx.date, range)).length,
-      expenseCategoryTotals: calculateExpenseCategoryTotals(transactions, range),
-      incomeCategoryTotals: calculateIncomeCategoryTotals(transactions, range),
-      highest: calculateHighestSpendingDay(transactions, range),
-      lowest: calculateLowestSpendingDay(transactions, range),
-      series: buildSpendingSeries(transactions, range),
-      previousExpenses,
-      previousRange,
-      percentageChange: calculatePercentageChange(expenses, previousExpenses),
+    const summary = summarize(transactions, range);
+    // Compare only what has actually happened: "1–24 Sep" vs "1–24 Aug", not a
+    // partial month against a full one.
+    const comparison = getComparisonRanges(range);
+    const comparisonData = comparison && {
+      ...comparison,
+      currentExpenses: calculateTotalExpenses(transactions, comparison.current),
+      previousExpenses: calculateTotalExpenses(transactions, comparison.previous),
     };
-  }, [transactions, range, isValidRange]);
+    return {
+      summary,
+      series: buildSpendingSeriesFromDaily(summary.dailyExpenses),
+      comparison: comparisonData
+        ? {
+            ...comparisonData,
+            percentageChange: calculatePercentageChange(comparisonData.currentExpenses, comparisonData.previousExpenses),
+          }
+        : null,
+    };
+  }, [transactions, range]);
+  const { summary, comparison } = data;
 
   if (transactions.length === 0) {
     return (
@@ -82,22 +69,22 @@ export default function Analytics() {
         onCustomChange={period.setCustomRange}
       />
 
-      <SummaryCards income={data.income} expenses={data.expenses} balance={data.balance} />
+      <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
       <QuickStats
-        averagePerDay={data.avg}
-        medianPerDay={data.median}
-        transactionCount={data.transactionCount}
-        spendingDays={data.spendingDays}
+        averagePerDay={summary.averagePerDay}
+        medianPerDay={summary.medianPerDay}
+        transactionCount={summary.transactionCount}
+        spendingDays={summary.spendingDays}
       />
-      <DayHighlightCards highest={data.highest} lowest={data.lowest} />
+      <DayHighlightCards highest={summary.highest} lowest={summary.lowest} />
 
-      {isValidRange && (
+      {comparison && (
         <PeriodComparison
-          currentLabel={formatRangeLabel(period.range)}
-          previousLabel={formatRangeLabel(data.previousRange)}
-          current={data.expenses}
-          previous={data.previousExpenses}
-          percentageChange={data.percentageChange}
+          currentLabel={formatRangeLabel(comparison.current)}
+          previousLabel={formatRangeLabel(comparison.previous)}
+          current={comparison.currentExpenses}
+          previous={comparison.previousExpenses}
+          percentageChange={comparison.percentageChange}
         />
       )}
 
@@ -105,14 +92,14 @@ export default function Analytics() {
 
       <CategoryDonut
         title={t.categoryBreakdown.spendingByCategory}
-        totals={data.expenseCategoryTotals}
+        totals={summary.expenseByCategory}
         categories={categories}
         emptyMessage={t.categoryBreakdown.expenseEmptyHint}
         onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
       />
       <CategoryDonut
         title={t.categoryBreakdown.incomeByCategory}
-        totals={data.incomeCategoryTotals}
+        totals={summary.incomeByCategory}
         categories={categories}
         emptyMessage={t.categoryBreakdown.incomeEmptyHint}
         onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}

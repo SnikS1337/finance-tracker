@@ -30,6 +30,9 @@ function tx(overrides: Partial<Transaction>): Transaction {
 }
 
 const range = { start: new Date(2026, 8, 1), end: new Date(2026, 8, 30) }; // Sept 2026
+// A moment after the range has ended, so "elapsed days" = the whole month and
+// these tests don't depend on the real current date.
+const afterRange = new Date(2026, 9, 1, 12);
 
 describe("totals", () => {
   it("sums income and expenses separately and computes balance", () => {
@@ -53,7 +56,7 @@ describe("average and median daily expense", () => {
   it("counts zero-spend days toward the average (30-day September)", () => {
     const transactions = [tx({ date: "2026-09-01", amount: 3000 })];
     // 3000 total / 30 calendar days in range = 100
-    expect(calculateAverageDailyExpense(transactions, range)).toBe(100);
+    expect(calculateAverageDailyExpense(transactions, range, afterRange)).toBe(100);
   });
 
   it("computes median across all calendar days including zero-spend days", () => {
@@ -62,7 +65,7 @@ describe("average and median daily expense", () => {
       tx({ date: "2026-09-02", amount: 200 }),
     ];
     // 30 days total, 28 are zero -> median is 0
-    expect(calculateMedianDailyExpense(transactions, range)).toBe(0);
+    expect(calculateMedianDailyExpense(transactions, range, afterRange)).toBe(0);
   });
 
   it("counts only days that actually had spending", () => {

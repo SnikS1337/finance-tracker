@@ -7,17 +7,9 @@ import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { useTransactionSheet } from "../hooks/useTransactionSheet";
-import {
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  calculateBalance,
-  calculateAverageDailyExpense,
-  calculateMedianDailyExpense,
-  calculateSpendingDaysCount,
-  calculateExpenseCategoryTotals,
-} from "../lib/calculations";
-import { buildSpendingSeries } from "../lib/chart-data";
-import { getPresetRange, isDateKeyInRange } from "../lib/date-utils";
+import { summarize } from "../lib/calculations";
+import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
+import { getPresetRange } from "../lib/date-utils";
 import { t } from "../i18n";
 
 /**
@@ -32,20 +24,10 @@ export default function Dashboard() {
   // Same lifetime as the old `usePeriod("thisMonth")` range: computed once per visit.
   const range = useMemo(() => getPresetRange("thisMonth"), []);
 
-  const stats = useMemo(
-    () => ({
-      income: calculateTotalIncome(transactions, range),
-      expenses: calculateTotalExpenses(transactions, range),
-      balance: calculateBalance(transactions, range),
-      avg: calculateAverageDailyExpense(transactions, range),
-      median: calculateMedianDailyExpense(transactions, range),
-      spendingDays: calculateSpendingDaysCount(transactions, range),
-      transactionCount: transactions.filter((tx) => isDateKeyInRange(tx.date, range)).length,
-      categoryTotals: calculateExpenseCategoryTotals(transactions, range),
-      series: buildSpendingSeries(transactions, range),
-    }),
-    [transactions, range]
-  );
+  const { summary, series } = useMemo(() => {
+    const summary = summarize(transactions, range);
+    return { summary, series: buildSpendingSeriesFromDaily(summary.dailyExpenses) };
+  }, [transactions, range]);
 
   if (transactions.length === 0) {
     return (
@@ -66,20 +48,20 @@ export default function Dashboard() {
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.periodCaption}</p>
       </div>
 
-      <SummaryCards income={stats.income} expenses={stats.expenses} balance={stats.balance} />
+      <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
 
       <QuickStats
-        averagePerDay={stats.avg}
-        medianPerDay={stats.median}
-        transactionCount={stats.transactionCount}
-        spendingDays={stats.spendingDays}
+        averagePerDay={summary.averagePerDay}
+        medianPerDay={summary.medianPerDay}
+        transactionCount={summary.transactionCount}
+        spendingDays={summary.spendingDays}
       />
 
-      <SpendingChart data={stats.series} />
+      <SpendingChart data={series} />
 
       <CategoryDonut
         title={t.categoryBreakdown.spendingByCategory}
-        totals={stats.categoryTotals}
+        totals={summary.expenseByCategory}
         categories={categories}
         emptyMessage={t.categoryBreakdown.expenseEmptyHint}
         onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
