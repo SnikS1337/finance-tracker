@@ -58,6 +58,7 @@ export interface Dictionary {
     periodCaption: string;
     todaySpent: (amount: string) => string;
     todayNothingSpent: string;
+    budgetsTitle: string;
     emptyTitle: string;
     emptyDescription: string;
     addTransactionCta: string;

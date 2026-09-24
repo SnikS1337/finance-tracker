@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
+import { BudgetOverview } from "../components/dashboard/BudgetOverview";
 import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
@@ -19,7 +20,7 @@ import { t } from "../i18n";
  * in Analytics, which has the full PeriodSelector.
  */
 export default function Dashboard() {
-  const { transactions, categories } = useAppData();
+  const { transactions, categories, budgets } = useAppData();
   const { openAdd } = useTransactionSheetActions();
   const navigate = useNavigate();
 
@@ -58,6 +59,8 @@ export default function Dashboard() {
       </div>
 
       <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
+
+      <BudgetOverview budgets={budgets} categories={categories} transactions={transactions} range={range} />
 
       <QuickStats
         averagePerDay={summary.averagePerDay}

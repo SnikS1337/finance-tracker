@@ -53,6 +53,7 @@ export const ru: Dictionary = {
     periodCaption: "Сводка за текущий месяц",
     todaySpent: (amount) => `Сегодня потрачено: ${amount}`,
     todayNothingSpent: "Сегодня трат пока нет",
+    budgetsTitle: "Бюджеты",
     emptyTitle: "Пока нет операций",
     emptyDescription: "Начните учёт финансов, добавив первую операцию.",
     addTransactionCta: "+ Добавить операцию",
