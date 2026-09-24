@@ -187,3 +187,30 @@ describe("deleting a category", () => {
     expect(storage.getBudgets().map((b) => b.id)).toEqual(["b-taxi", "b-overall"]);
   });
 });
+
+describe("collections", () => {
+  it("update merges the patch, keeps the id, stamps updatedAt, and returns null for unknown ids", () => {
+    storage.importBackup(backup());
+    const updated = storage.updateTransaction("t-1", { amount: 50_000, id: "hacked" } as Partial<Transaction>);
+    expect(updated?.id).toBe("t-1");
+    expect(updated?.amount).toBe(50_000);
+    expect(updated?.updatedAt).not.toBe(txn().updatedAt);
+    expect(storage.getTransactions()[0].amount).toBe(50_000);
+    expect(storage.updateTransaction("missing", { amount: 1 })).toBeNull();
+  });
+
+  it("create appends and delete removes only the given item", () => {
+    storage.importBackup(backup());
+    storage.createTransaction(txn({ id: "t-2" }));
+    expect(storage.getTransactions().map((t) => t.id)).toEqual(["t-1", "t-2"]);
+    storage.deleteTransaction("t-1");
+    expect(storage.getTransactions().map((t) => t.id)).toEqual(["t-2"]);
+  });
+
+  it("category updates don't get an updatedAt field", () => {
+    storage.importBackup(backup());
+    const updated = storage.updateCategory("c-food", { name: "Еда и кафе" });
+    expect(updated?.name).toBe("Еда и кафе");
+    expect("updatedAt" in (updated ?? {})).toBe(false);
+  });
+});

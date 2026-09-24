@@ -29,11 +29,19 @@ class StorageUnavailableError extends Error {
   }
 }
 
+// Probing writes and removes a key; doing that before every single read and
+// write was wasted work. A successful probe is remembered; a failed one is
+// retried next time (storage can become available again, e.g. after the user
+// frees space or leaves private mode).
+let storageKnownAvailable = false;
+
 function isStorageAvailable(): boolean {
+  if (storageKnownAvailable) return true;
   try {
     const testKey = "pft:__test__";
     window.localStorage.setItem(testKey, "1");
     window.localStorage.removeItem(testKey);
+    storageKnownAvailable = true;
     return true;
   } catch {
     return false;
@@ -115,66 +123,61 @@ function ensureInitialized(): void {
   }
 }
 
+// ---------- Collections ----------
+
+/**
+ * Get/save/create/update/delete for one stored list. `touch` lets a
+ * collection stamp fields on update (e.g. `updatedAt`).
+ */
+function collection<T extends { id: string }>(key: string, fallback: () => T[], touch: (item: T) => T = (item) => item) {
+  const getAll = (): T[] => {
+    ensureInitialized();
+    return readJSON<T[]>(key, fallback());
+  };
+  const saveAll = (items: T[]): void => writeJSON(key, items);
+  return {
+    getAll,
+    saveAll,
+    create(item: T): T {
+      saveAll([...getAll(), item]);
+      return item;
+    },
+    update(id: string, patch: Partial<T>): T | null {
+      let updated: T | null = null;
+      const next = getAll().map((item) => {
+        if (item.id !== id) return item;
+        updated = touch({ ...item, ...patch, id: item.id });
+        return updated;
+      });
+      if (updated) saveAll(next);
+      return updated;
+    },
+    remove(id: string): void {
+      saveAll(getAll().filter((item) => item.id !== id));
+    },
+  };
+}
+
+const stampUpdatedAt = <T extends { updatedAt: string }>(item: T): T => ({ ...item, updatedAt: new Date().toISOString() });
+
+const transactionStore = collection<Transaction>(KEYS.transactions, () => [], stampUpdatedAt);
+const categoryStore = collection<Category>(KEYS.categories, () => DEFAULT_CATEGORIES);
+const budgetStore = collection<Budget>(KEYS.budgets, () => [], stampUpdatedAt);
+
 // ---------- Transactions ----------
 
-export function getTransactions(): Transaction[] {
-  ensureInitialized();
-  return readJSON<Transaction[]>(KEYS.transactions, []);
-}
-
-export function saveTransactions(transactions: Transaction[]): void {
-  writeJSON(KEYS.transactions, transactions);
-}
-
-export function createTransaction(tx: Transaction): Transaction {
-  const all = getTransactions();
-  saveTransactions([...all, tx]);
-  return tx;
-}
-
-export function updateTransaction(id: string, patch: Partial<Transaction>): Transaction | null {
-  const all = getTransactions();
-  let updated: Transaction | null = null;
-  const next = all.map((tx) => {
-    if (tx.id !== id) return tx;
-    updated = { ...tx, ...patch, id: tx.id, updatedAt: new Date().toISOString() };
-    return updated;
-  });
-  if (updated) saveTransactions(next);
-  return updated;
-}
-
-export function deleteTransaction(id: string): void {
-  saveTransactions(getTransactions().filter((tx) => tx.id !== id));
-}
+export const getTransactions = transactionStore.getAll;
+export const saveTransactions = transactionStore.saveAll;
+export const createTransaction = transactionStore.create;
+export const updateTransaction = transactionStore.update;
+export const deleteTransaction = transactionStore.remove;
 
 // ---------- Categories ----------
 
-export function getCategories(): Category[] {
-  ensureInitialized();
-  return readJSON<Category[]>(KEYS.categories, DEFAULT_CATEGORIES);
-}
-
-export function saveCategories(categories: Category[]): void {
-  writeJSON(KEYS.categories, categories);
-}
-
-export function createCategory(category: Category): Category {
-  saveCategories([...getCategories(), category]);
-  return category;
-}
-
-export function updateCategory(id: string, patch: Partial<Category>): Category | null {
-  const all = getCategories();
-  let updated: Category | null = null;
-  const next = all.map((c) => {
-    if (c.id !== id) return c;
-    updated = { ...c, ...patch, id: c.id };
-    return updated;
-  });
-  if (updated) saveCategories(next);
-  return updated;
-}
+export const getCategories = categoryStore.getAll;
+export const saveCategories = categoryStore.saveAll;
+export const createCategory = categoryStore.create;
+export const updateCategory = categoryStore.update;
 
 /** Deletes a category together with its budget (a budget can't outlive its category). */
 export function deleteCategory(id: string): void {
@@ -186,35 +189,11 @@ export function deleteCategory(id: string): void {
 
 // ---------- Budgets ----------
 
-export function getBudgets(): Budget[] {
-  ensureInitialized();
-  return readJSON<Budget[]>(KEYS.budgets, []);
-}
-
-export function saveBudgets(budgets: Budget[]): void {
-  writeJSON(KEYS.budgets, budgets);
-}
-
-export function createBudget(budget: Budget): Budget {
-  saveBudgets([...getBudgets(), budget]);
-  return budget;
-}
-
-export function updateBudget(id: string, patch: Partial<Budget>): Budget | null {
-  const all = getBudgets();
-  let updated: Budget | null = null;
-  const next = all.map((b) => {
-    if (b.id !== id) return b;
-    updated = { ...b, ...patch, id: b.id, updatedAt: new Date().toISOString() };
-    return updated;
-  });
-  if (updated) saveBudgets(next);
-  return updated;
-}
-
-export function deleteBudget(id: string): void {
-  saveBudgets(getBudgets().filter((b) => b.id !== id));
-}
+export const getBudgets = budgetStore.getAll;
+export const saveBudgets = budgetStore.saveAll;
+export const createBudget = budgetStore.create;
+export const updateBudget = budgetStore.update;
+export const deleteBudget = budgetStore.remove;
 
 // ---------- Settings ----------
 
