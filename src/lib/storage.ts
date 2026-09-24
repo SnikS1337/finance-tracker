@@ -1,6 +1,8 @@
 import type { Transaction, Category, Budget, Settings, BackupData } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 import { DEFAULT_CATEGORIES } from "./seed";
+import { isValidAmount } from "./currency";
+import { fromDateKey } from "./date-utils";
 import { t } from "../i18n";
 
 /**
@@ -59,6 +61,30 @@ function writeJSON<T>(key: string, value: T): void {
     throw new Error(
       err instanceof DOMException ? t.errors.storageFull : t.errors.saveFailed
     );
+  }
+}
+
+/**
+ * Writes several keys as one unit: if any write fails (typically quota
+ * exceeded), every key is put back exactly as it was before, so the app never
+ * ends up with, say, new categories but old transactions.
+ */
+function writeAllOrNothing(entries: Array<[key: string, value: unknown]>): void {
+  if (!isStorageAvailable()) throw new StorageUnavailableError();
+  const previous = entries.map(([key]) => [key, window.localStorage.getItem(key)] as const);
+  try {
+    for (const [key, value] of entries) window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    for (const [key, raw] of previous) {
+      try {
+        if (raw === null) window.localStorage.removeItem(key);
+        else window.localStorage.setItem(key, raw);
+      } catch {
+        // Restoring an earlier value can't need more space than it used before;
+        // nothing sensible left to do if even that fails.
+      }
+    }
+    throw new Error(err instanceof DOMException ? t.errors.storageFull : t.errors.saveFailed);
   }
 }
 
@@ -150,8 +176,12 @@ export function updateCategory(id: string, patch: Partial<Category>): Category |
   return updated;
 }
 
+/** Deletes a category together with its budget (a budget can't outlive its category). */
 export function deleteCategory(id: string): void {
-  saveCategories(getCategories().filter((c) => c.id !== id));
+  writeAllOrNothing([
+    [KEYS.categories, getCategories().filter((c) => c.id !== id)],
+    [KEYS.budgets, getBudgets().filter((b) => b.categoryId !== id)],
+  ]);
 }
 
 // ---------- Budgets ----------
@@ -212,20 +242,26 @@ export function exportBackup(): BackupData {
 
 export class InvalidBackupError extends Error {}
 
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v.length > 0;
+const isTransactionType = (v: unknown) => v === "income" || v === "expense";
+const THEMES = new Set(["light", "dark", "system"]);
+
+function isValidDateKey(v: unknown): v is string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(fromDateKey(v).getTime());
+}
+
 function isTransactionArray(v: unknown): v is Transaction[] {
   return (
     Array.isArray(v) &&
     v.every(
       (tx) =>
-        tx &&
-        typeof tx.id === "string" &&
-        (tx.type === "income" || tx.type === "expense") &&
-        typeof tx.amount === "number" &&
-        Number.isSafeInteger(tx.amount) &&
-        tx.amount > 0 &&
-        typeof tx.categoryId === "string" &&
-        typeof tx.date === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(tx.date)
+        isObject(tx) &&
+        isNonEmptyString(tx.id) &&
+        isTransactionType(tx.type) &&
+        isValidAmount(tx.amount) &&
+        isNonEmptyString(tx.categoryId) &&
+        isValidDateKey(tx.date)
     )
   );
 }
@@ -233,26 +269,49 @@ function isTransactionArray(v: unknown): v is Transaction[] {
 function isCategoryArray(v: unknown): v is Category[] {
   return (
     Array.isArray(v) &&
-    v.every((c) => c && typeof c.id === "string" && typeof c.name === "string" && typeof c.icon === "string")
+    v.every(
+      (c) =>
+        isObject(c) &&
+        isNonEmptyString(c.id) &&
+        typeof c.name === "string" &&
+        typeof c.icon === "string" &&
+        typeof c.color === "string" &&
+        isTransactionType(c.type)
+    )
   );
 }
 
 function isBudgetArray(v: unknown): v is Budget[] {
-  return Array.isArray(v) &&
+  return (
+    Array.isArray(v) &&
     v.every(
       (b) =>
-        b &&
-        typeof b.id === "string" &&
-        typeof b.amount === "number" &&
-        Number.isSafeInteger(b.amount) &&
-        b.amount > 0 &&
-        (b.categoryId === undefined || typeof b.categoryId === "string")
-    );
+        isObject(b) &&
+        isNonEmptyString(b.id) &&
+        isValidAmount(b.amount) &&
+        (b.categoryId === undefined || isNonEmptyString(b.categoryId))
+    )
+  );
 }
 
-/** Validates and imports a backup. Throws InvalidBackupError with a human-readable message on failure. */
+/** Only known settings fields with valid values survive; anything else falls back to the default. */
+function sanitizeSettings(v: unknown): Settings | null {
+  if (!isObject(v)) return null;
+  return {
+    theme: typeof v.theme === "string" && THEMES.has(v.theme) ? (v.theme as Settings["theme"]) : DEFAULT_SETTINGS.theme,
+    onboarded: typeof v.onboarded === "boolean" ? v.onboarded : true,
+    isDemoData: false,
+  };
+}
+
+/**
+ * Validates and imports a backup. Throws InvalidBackupError with a
+ * human-readable message on failure. The whole file is checked before
+ * anything is written, and the write itself is all-or-nothing, so a bad or
+ * partially-fitting backup can never leave the current data half-replaced.
+ */
 export function importBackup(data: unknown): void {
-  if (!data || typeof data !== "object") {
+  if (!isObject(data)) {
     throw new InvalidBackupError(t.errors.notValidBackup);
   }
   const backup = data as Partial<BackupData>;
@@ -282,17 +341,27 @@ export function importBackup(data: unknown): void {
     });
   };
 
-  saveCategories(dedupe(backup.categories));
-  saveTransactions(dedupe(backup.transactions));
-  saveBudgets(dedupe(backup.budgets ?? []));
-  if (backup.settings) {
-    saveSettings({ ...DEFAULT_SETTINGS, ...backup.settings, isDemoData: false });
-  }
+  const categories = dedupe(backup.categories);
+  const categoryIds = new Set(categories.map((c) => c.id));
+  // A category budget whose category isn't in the backup would show up as a
+  // second, always-empty "monthly budget" — drop it rather than import junk.
+  const budgets = dedupe(backup.budgets ?? []).filter((b) => !b.categoryId || categoryIds.has(b.categoryId));
+  const settings = sanitizeSettings(backup.settings);
+
+  const entries: Array<[string, unknown]> = [
+    [KEYS.categories, categories],
+    [KEYS.transactions, dedupe(backup.transactions)],
+    [KEYS.budgets, budgets],
+  ];
+  if (settings) entries.push([KEYS.settings, settings]);
+  writeAllOrNothing(entries);
 }
 
 export function clearAllData(): void {
-  saveTransactions([]);
-  saveCategories(DEFAULT_CATEGORIES);
-  saveBudgets([]);
-  saveSettings(DEFAULT_SETTINGS);
+  writeAllOrNothing([
+    [KEYS.transactions, []],
+    [KEYS.categories, DEFAULT_CATEGORIES],
+    [KEYS.budgets, []],
+    [KEYS.settings, DEFAULT_SETTINGS],
+  ]);
 }

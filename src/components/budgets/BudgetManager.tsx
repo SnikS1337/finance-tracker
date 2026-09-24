@@ -18,7 +18,13 @@ export function BudgetManager() {
   const [editingCategoryId, setEditingCategoryId] = useState<string | undefined>(undefined);
 
   const overallBudget = budgets.find((b) => !b.categoryId) ?? null;
-  const categoryBudgets = budgets.filter((b): b is Budget & { categoryId: string } => !!b.categoryId);
+  // Budgets of categories that no longer exist (left behind by deletions made
+  // before storage.deleteCategory cleaned them up) are hidden, not shown as a
+  // second "monthly budget".
+  const categoryIds = new Set(categories.map((c) => c.id));
+  const categoryBudgets = budgets.filter(
+    (b): b is Budget & { categoryId: string } => !!b.categoryId && categoryIds.has(b.categoryId)
+  );
 
   const expenseCategories = categories.filter((c) => c.type === "expense" && !c.isArchived);
   const categoriesWithoutBudget = expenseCategories.filter(

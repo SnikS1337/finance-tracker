@@ -16,6 +16,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     ...categories,
     ...budgets,
     ...settings,
+    // Deleting a category also deletes its budget in storage (see
+    // storage.deleteCategory), so the budgets slice must be re-read too.
+    removeCategory: (id: string) => {
+      categories.removeCategory(id);
+      budgets.refresh();
+    },
     // Each hook's own `refresh` refreshes only its own slice; imports/deletes touch
     // everything at once, so callers get a combined refresh instead of a single hook's.
     refresh: () => {
