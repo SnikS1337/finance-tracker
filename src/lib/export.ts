@@ -80,13 +80,13 @@ function csvEscape(value: string): string {
 /** CSV text (with a UTF-8 BOM) for the given transactions, oldest first. */
 export function buildCSV(transactions: Transaction[], categories: Category[]): string {
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
-  const header = [t.csv.date, t.csv.type, t.csv.amount, t.csv.category].join(CSV_SEPARATOR);
+  const header = [t.csv.date, t.csv.type, t.csv.amount, t.csv.category, t.csv.note].join(CSV_SEPARATOR);
   const typeLabel = (type: Transaction["type"]) => (type === "income" ? t.csv.income : t.csv.expense);
   const rows = transactions
     .slice()
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((tx) =>
-      [tx.date, typeLabel(tx.type), String(tx.amount), categoryName.get(tx.categoryId) ?? t.csv.unknown]
+      [tx.date, typeLabel(tx.type), String(tx.amount), categoryName.get(tx.categoryId) ?? t.csv.unknown, tx.note ?? ""]
         .map(csvEscape)
         .join(CSV_SEPARATOR)
     );

@@ -52,9 +52,8 @@ export function useTransactions() {
 
   const reassignCategory = useCallback(
     (fromCategoryId: string, toCategoryId: string) => {
-      const all = storage.getTransactions();
-      const next = all.map((t) => (t.categoryId === fromCategoryId ? { ...t, categoryId: toCategoryId } : t));
-      storage.saveTransactions(next);
+      // Moves repeating operations along too (see AppDataContext, which re-reads them).
+      storage.reassignCategory(fromCategoryId, toCategoryId);
       refresh();
     },
     [refresh]

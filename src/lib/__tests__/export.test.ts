@@ -31,7 +31,7 @@ describe("buildCSV", () => {
 
   it("uses ';' as the separator (what Excel expects with Russian settings)", () => {
     expect(CSV_SEPARATOR).toBe(";");
-    expect(lines[0].split(";")).toHaveLength(4);
+    expect(lines[0].split(";")).toHaveLength(5);
   });
 
   it("starts with a UTF-8 BOM and uses CRLF line endings", () => {
@@ -40,8 +40,8 @@ describe("buildCSV", () => {
   });
 
   it("quotes values containing the separator or quotes", () => {
-    expect(lines[1]).toBe('2026-09-10;расход;45000;"Кафе; бары"');
-    expect(lines[2]).toBe('2026-09-12;доход;30000000;"Зарплата ""основная"""');
+    expect(lines[1]).toBe('2026-09-10;расход;45000;"Кафе; бары";');
+    expect(lines[2]).toBe('2026-09-12;доход;30000000;"Зарплата ""основная""";');
   });
 });
 

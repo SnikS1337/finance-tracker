@@ -96,6 +96,7 @@ export const ru: Dictionary = {
     emptyTitleNoMatch: "Ничего не найдено",
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
     deleteAction: "Удалить операцию",
+    recurringBadge: "Регулярная операция",
     deleteConfirmTitle: "Удалить операцию?",
     deleteConfirmDescription: "Сразу после удаления её можно будет вернуть кнопкой «Отменить».",
   },
@@ -116,6 +117,11 @@ export const ru: Dictionary = {
     errorCategory: "Выберите категорию.",
     errorDate: "Выберите дату.",
     repeatToday: "Повторить сегодня",
+    noteLabel: "Заметка",
+    notePlaceholder: "Необязательно",
+    repeatMonthly: "Повторять каждый месяц",
+    repeatMonthlyHint: (day) => `Будет добавляться автоматически ${day}-го числа каждого месяца`,
+    recurringEditHint: "Регулярная операция: изменения коснутся только этой записи. Остановить повтор можно в Настройках.",
   },
   toasts: {
     repeatedToday: "Операция добавлена на сегодня",
@@ -136,6 +142,9 @@ export const ru: Dictionary = {
     backupImported: "Резервная копия импортирована",
     csvExported: "CSV-файл сохранён",
     allDataDeleted: "Все данные удалены",
+    recurringCreated: "Регулярная операция создана",
+    recurringAdded: (count) => `Добавлены регулярные операции: ${count}`,
+    recurringStopped: "Повтор остановлен",
   },
   analytics: {
     title: "Аналитика",
@@ -198,12 +207,21 @@ export const ru: Dictionary = {
     categoriesSection: "Категории",
     reportsSection: "Отчёты",
     dataSection: "Резервные копии и данные",
+    recurringSection: "Регулярные операции",
     demoDataNotice:
       "Сейчас вы видите демонстрационные данные. Удалите их в разделе «Резервные копии и данные», когда будете готовы вести учёт своих финансов.",
     about: "О приложении",
     aboutBody:
       "Финансовый учёт — быстрый, приватный офлайн-трекер расходов и бюджета. Все данные остаются на этом устройстве, пока вы сами их не экспортируете.",
     version: "Версия 1.0.0",
+  },
+  recurring: {
+    empty: "Отметьте «Повторять каждый месяц» при добавлении операции — аренда, зарплата, подписки будут добавляться сами.",
+    monthlyOn: (day) => `каждый месяц, ${day}-го числа`,
+    stop: "Остановить",
+    stopConfirmTitle: "Остановить повтор?",
+    stopConfirmDescription: "Новые операции больше не будут добавляться. Уже добавленные останутся.",
+    stopConfirmCta: "Остановить",
   },
   data: {
     exportJson: "Экспорт JSON",
@@ -251,6 +269,7 @@ export const ru: Dictionary = {
     expense: "расход",
     income: "доход",
     unknown: "неизвестно",
+    note: "заметка",
   },
   errors: {
     storageUnavailable: "Локальное хранилище недоступно в этом браузере.",
@@ -261,6 +280,7 @@ export const ru: Dictionary = {
     invalidTransactionData: "Данные операций в резервной копии отсутствуют или повреждены.",
     invalidCategoryData: "Данные категорий в резервной копии отсутствуют или повреждены.",
     invalidBudgetData: "Данные бюджетов в резервной копии повреждены.",
+    invalidRecurringData: "Данные регулярных операций в резервной копии повреждены.",
   },
 };
 

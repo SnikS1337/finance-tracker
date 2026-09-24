@@ -3,6 +3,11 @@ import { useTransactions } from "../hooks/useTransactions";
 import { useCategories } from "../hooks/useCategories";
 import { useBudgets } from "../hooks/useBudgets";
 import { useSettings } from "../hooks/useSettings";
+import { useRecurring } from "../hooks/useRecurring";
+import { useToday } from "../hooks/useToday";
+import { useToast } from "../hooks/useToast";
+import * as storage from "../lib/storage";
+import { t } from "../i18n";
 import { AppDataContext, type AppData } from "./appDataStore";
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
@@ -10,13 +15,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const categories = useCategories();
   const budgets = useBudgets();
   const settings = useSettings();
+  const recurring = useRecurring();
+  const today = useToday();
+  const { showToast } = useToast();
 
   // The hooks' state and callbacks are stable between renders (useState +
   // useCallback); only the wrapper objects they return are new each time.
   // Building the context value from those stable parts keeps it referentially
   // stable until data actually changes, so consumers don't re-render for nothing.
-  const { transactions: txList, addTransaction, editTransaction, removeTransaction, restoreTransaction, reassignCategory } =
-    transactions;
+  const {
+    transactions: txList,
+    addTransaction,
+    editTransaction,
+    removeTransaction,
+    restoreTransaction,
+    reassignCategory: reassignTransactions,
+  } = transactions;
   const { categories: categoryList, addCategory, editCategory, archiveCategory, unarchiveCategory } = categories;
   const { budgets: budgetList, upsertBudget, removeBudget } = budgets;
   const { settings: currentSettings, updateSettings } = settings;
@@ -24,15 +38,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const { refresh: refreshBudgets } = budgets;
   const { refresh: refreshTransactions } = transactions;
   const { refresh: refreshSettings } = settings;
+  const { recurringRules, addRecurringRule, removeRecurringRule, refresh: refreshRecurring } = recurring;
 
-  // Deleting a category also deletes its budget in storage (see
-  // storage.deleteCategory), so the budgets slice must be re-read too.
+  // Deleting a category also deletes its budget and repeating operations in
+  // storage (see storage.deleteCategory), so those slices must be re-read too.
   const removeCategory = useCallback(
     (id: string) => {
       removeCategoryOnly(id);
       refreshBudgets();
+      refreshRecurring();
     },
-    [removeCategoryOnly, refreshBudgets]
+    [removeCategoryOnly, refreshBudgets, refreshRecurring]
+  );
+
+  // Moving operations to another category moves repeating operations too.
+  const reassignCategory = useCallback(
+    (fromId: string, toId: string) => {
+      reassignTransactions(fromId, toId);
+      refreshRecurring();
+    },
+    [reassignTransactions, refreshRecurring]
   );
 
   // Each hook's own `refresh` refreshes only its own slice; imports/deletes touch
@@ -42,7 +67,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     refreshCategories();
     refreshBudgets();
     refreshSettings();
-  }, [refreshTransactions, refreshCategories, refreshBudgets, refreshSettings]);
+    refreshRecurring();
+  }, [refreshTransactions, refreshCategories, refreshBudgets, refreshSettings, refreshRecurring]);
+
+  // Repeating operations come due on their day: on start, when the date changes
+  // while the app is open, and after a rule is added with a past start date
+  // (months missed while the app wasn't opened are caught up too).
+  useEffect(() => {
+    let added = 0;
+    try {
+      added = storage.applyRecurring(today);
+    } catch {
+      // Storage full/unavailable: nothing is written (all-or-nothing); retried next time.
+      return;
+    }
+    refreshRecurring();
+    if (added > 0) {
+      refreshTransactions();
+      showToast({ message: t.toasts.recurringAdded(added) });
+    }
+  }, [today, recurringRules.length, refreshRecurring, refreshTransactions, showToast]);
 
   // Another tab (or the installed app next to a browser tab) changed the data:
   // re-read it, so this tab never shows — or later overwrites — stale data.
@@ -77,6 +121,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeBudget,
       settings: currentSettings,
       updateSettings,
+      recurringRules,
+      addRecurringRule,
+      removeRecurringRule,
       refresh,
     }),
     [
@@ -97,6 +144,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeBudget,
       currentSettings,
       updateSettings,
+      recurringRules,
+      addRecurringRule,
+      removeRecurringRule,
       refresh,
     ]
   );

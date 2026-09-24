@@ -1,8 +1,9 @@
-import type { Transaction, Category, Budget, Settings, BackupData } from "../types";
+import type { Transaction, Category, Budget, Settings, BackupData, RecurringRule } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 import { DEFAULT_CATEGORIES } from "./seed";
 import { isValidAmount } from "./currency";
 import { fromDateKey } from "./date-utils";
+import { materializeRecurring } from "./recurring";
 import { t } from "../i18n";
 
 /**
@@ -20,6 +21,7 @@ const KEYS = {
   categories: "pft:categories",
   budgets: "pft:budgets",
   settings: "pft:settings",
+  recurring: "pft:recurring",
 } as const;
 
 class StorageUnavailableError extends Error {
@@ -163,6 +165,7 @@ const stampUpdatedAt = <T extends { updatedAt: string }>(item: T): T => ({ ...it
 const transactionStore = collection<Transaction>(KEYS.transactions, () => [], stampUpdatedAt);
 const categoryStore = collection<Category>(KEYS.categories, () => DEFAULT_CATEGORIES);
 const budgetStore = collection<Budget>(KEYS.budgets, () => [], stampUpdatedAt);
+const recurringStore = collection<RecurringRule>(KEYS.recurring, () => []);
 
 // ---------- Transactions ----------
 
@@ -179,11 +182,21 @@ export const saveCategories = categoryStore.saveAll;
 export const createCategory = categoryStore.create;
 export const updateCategory = categoryStore.update;
 
-/** Deletes a category together with its budget (a budget can't outlive its category). */
+/** Deletes a category together with its budget and repeating operations (neither can outlive its category). */
 export function deleteCategory(id: string): void {
   writeAllOrNothing([
     [KEYS.categories, getCategories().filter((c) => c.id !== id)],
     [KEYS.budgets, getBudgets().filter((b) => b.categoryId !== id)],
+    [KEYS.recurring, getRecurringRules().filter((r) => r.categoryId !== id)],
+  ]);
+}
+
+/** Moves every operation (and repeating operation) of one category to another, in one write. */
+export function reassignCategory(fromId: string, toId: string): void {
+  const move = <T extends { categoryId: string }>(item: T): T => (item.categoryId === fromId ? { ...item, categoryId: toId } : item);
+  writeAllOrNothing([
+    [KEYS.transactions, getTransactions().map(move)],
+    [KEYS.recurring, getRecurringRules().map(move)],
   ]);
 }
 
@@ -194,6 +207,30 @@ export const saveBudgets = budgetStore.saveAll;
 export const createBudget = budgetStore.create;
 export const updateBudget = budgetStore.update;
 export const deleteBudget = budgetStore.remove;
+
+// ---------- Repeating operations ----------
+
+export const getRecurringRules = recurringStore.getAll;
+export const createRecurringRule = recurringStore.create;
+export const deleteRecurringRule = recurringStore.remove;
+
+/**
+ * Adds every repeating operation that has come due up to `today` (including
+ * months missed while the app wasn't opened). Transactions and rules are
+ * written together, and occurrence ids are deterministic, so running this
+ * twice — or in two tabs — never adds duplicates. Returns how many were added.
+ */
+export function applyRecurring(today: string): number {
+  const rules = getRecurringRules();
+  if (rules.length === 0) return 0;
+  const result = materializeRecurring(rules, getTransactions(), today);
+  if (result.added === 0 && result.rules.every((r, i) => r === rules[i])) return 0;
+  writeAllOrNothing([
+    [KEYS.transactions, result.transactions],
+    [KEYS.recurring, result.rules],
+  ]);
+  return result.added;
+}
 
 // ---------- Settings ----------
 
@@ -216,6 +253,7 @@ export function exportBackup(): BackupData {
     categories: getCategories(),
     budgets: getBudgets(),
     settings: getSettings(),
+    recurring: getRecurringRules(),
   };
 }
 
@@ -225,6 +263,8 @@ const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 const isNonEmptyString = (v: unknown): v is string => typeof v === "string" && v.length > 0;
 const isTransactionType = (v: unknown) => v === "income" || v === "expense";
 const THEMES = new Set(["light", "dark", "system"]);
+/** Notes are capped at MAX_NOTE_LENGTH in the form; imports allow some slack for hand-edited files. */
+const MAX_IMPORTED_NOTE = 500;
 
 function isValidDateKey(v: unknown): v is string {
   return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(fromDateKey(v).getTime());
@@ -240,7 +280,9 @@ function isTransactionArray(v: unknown): v is Transaction[] {
         isTransactionType(tx.type) &&
         isValidAmount(tx.amount) &&
         isNonEmptyString(tx.categoryId) &&
-        isValidDateKey(tx.date)
+        isValidDateKey(tx.date) &&
+        (tx.note === undefined || (typeof tx.note === "string" && tx.note.length <= MAX_IMPORTED_NOTE)) &&
+        (tx.recurringId === undefined || isNonEmptyString(tx.recurringId))
     )
   );
 }
@@ -269,6 +311,26 @@ function isBudgetArray(v: unknown): v is Budget[] {
         isNonEmptyString(b.id) &&
         isValidAmount(b.amount) &&
         (b.categoryId === undefined || isNonEmptyString(b.categoryId))
+    )
+  );
+}
+
+function isRecurringArray(v: unknown): v is RecurringRule[] {
+  return (
+    Array.isArray(v) &&
+    v.every(
+      (r) =>
+        isObject(r) &&
+        isNonEmptyString(r.id) &&
+        isTransactionType(r.type) &&
+        isValidAmount(r.amount) &&
+        isNonEmptyString(r.categoryId) &&
+        (r.note === undefined || (typeof r.note === "string" && r.note.length <= MAX_IMPORTED_NOTE)) &&
+        Number.isInteger(r.dayOfMonth) &&
+        (r.dayOfMonth as number) >= 1 &&
+        (r.dayOfMonth as number) <= 31 &&
+        isValidDateKey(r.startDate) &&
+        isValidDateKey(r.lastDate)
     )
   );
 }
@@ -309,6 +371,9 @@ export function importBackup(data: unknown): void {
   if (backup.budgets !== undefined && !isBudgetArray(backup.budgets)) {
     throw new InvalidBackupError(t.errors.invalidBudgetData);
   }
+  if (backup.recurring !== undefined && !isRecurringArray(backup.recurring)) {
+    throw new InvalidBackupError(t.errors.invalidRecurringData);
+  }
 
   // De-duplicate IDs defensively in case the file was hand-edited or merged.
   const dedupe = <T extends { id: string }>(items: T[]): T[] => {
@@ -325,12 +390,16 @@ export function importBackup(data: unknown): void {
   // A category budget whose category isn't in the backup would show up as a
   // second, always-empty "monthly budget" — drop it rather than import junk.
   const budgets = dedupe(backup.budgets ?? []).filter((b) => !b.categoryId || categoryIds.has(b.categoryId));
+  const recurring = dedupe(backup.recurring ?? []).filter((r) => categoryIds.has(r.categoryId));
   const settings = sanitizeSettings(backup.settings);
 
+  // Older backups have no repeating operations: importing one replaces the data,
+  // so the current rules go too (they'd point at categories that may be gone).
   const entries: Array<[string, unknown]> = [
     [KEYS.categories, categories],
     [KEYS.transactions, dedupe(backup.transactions)],
     [KEYS.budgets, budgets],
+    [KEYS.recurring, recurring],
   ];
   if (settings) entries.push([KEYS.settings, settings]);
   writeAllOrNothing(entries);
@@ -341,6 +410,7 @@ export function clearAllData(): void {
     [KEYS.transactions, []],
     [KEYS.categories, DEFAULT_CATEGORIES],
     [KEYS.budgets, []],
+    [KEYS.recurring, []],
     [KEYS.settings, DEFAULT_SETTINGS],
   ]);
 }

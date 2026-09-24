@@ -101,6 +101,7 @@ export interface Dictionary {
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
     deleteAction: string;
+    recurringBadge: string;
     deleteConfirmTitle: string;
     deleteConfirmDescription: string;
   };
@@ -122,6 +123,11 @@ export interface Dictionary {
     errorDate: string;
     /** Button in the edit sheet: add the same operation again, dated today. */
     repeatToday: string;
+    noteLabel: string;
+    notePlaceholder: string;
+    repeatMonthly: string;
+    repeatMonthlyHint: (day: number) => string;
+    recurringEditHint: string;
   };
   toasts: {
     repeatedToday: string;
@@ -143,6 +149,9 @@ export interface Dictionary {
     backupImported: string;
     csvExported: string;
     allDataDeleted: string;
+    recurringCreated: string;
+    recurringAdded: (count: number) => string;
+    recurringStopped: string;
   };
   analytics: {
     title: string;
@@ -203,10 +212,19 @@ export interface Dictionary {
     categoriesSection: string;
     reportsSection: string;
     dataSection: string;
+    recurringSection: string;
     demoDataNotice: string;
     about: string;
     aboutBody: string;
     version: string;
+  };
+  recurring: {
+    empty: string;
+    monthlyOn: (day: number) => string;
+    stop: string;
+    stopConfirmTitle: string;
+    stopConfirmDescription: string;
+    stopConfirmCta: string;
   };
   data: {
     exportJson: string;
@@ -251,6 +269,7 @@ export interface Dictionary {
     expense: string;
     income: string;
     unknown: string;
+    note: string;
   };
   errors: {
     storageUnavailable: string;
@@ -261,5 +280,6 @@ export interface Dictionary {
     invalidTransactionData: string;
     invalidCategoryData: string;
     invalidBudgetData: string;
+    invalidRecurringData: string;
   };
 }

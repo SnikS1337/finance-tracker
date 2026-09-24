@@ -6,7 +6,7 @@ import { CategoryPicker } from "../categories/CategoryPicker";
 import { formatAmountInput, formatRubEquivalent, parseAmountInput } from "../../lib/currency";
 import { subDays, toDateKey, todayKey } from "../../lib/date-utils";
 import { useExchangeRate } from "../../hooks/useExchangeRate";
-import type { Category, NewTransactionInput, Transaction, TransactionType } from "../../types";
+import { MAX_NOTE_LENGTH, type Category, type NewTransactionInput, type Transaction, type TransactionType } from "../../types";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 
@@ -17,7 +17,7 @@ interface Props {
   /** Present when editing an existing transaction. */
   transaction?: Transaction | null;
   initialType?: TransactionType;
-  onSubmit: (input: NewTransactionInput) => void;
+  onSubmit: (input: NewTransactionInput, options?: { repeatMonthly?: boolean }) => void;
   onDelete?: (id: string) => void;
   /** Edit mode: add the same operation again, dated today. */
   onRepeat?: (input: NewTransactionInput) => void;
@@ -48,6 +48,8 @@ export function TransactionFormSheet({
   const [amountRaw, setAmountRaw] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [date, setDate] = useState(todayKey());
+  const [note, setNote] = useState("");
+  const [repeatMonthly, setRepeatMonthly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rate = useExchangeRate();
 
@@ -62,12 +64,15 @@ export function TransactionFormSheet({
       setAmountRaw(String(transaction.amount));
       setCategoryId(transaction.categoryId);
       setDate(transaction.date);
+      setNote(transaction.note ?? "");
     } else {
       setType(initialType);
       setAmountRaw("");
       setCategoryId(null);
       setDate(todayKey());
+      setNote("");
     }
+    setRepeatMonthly(false);
     setError(null);
   }, [open, transaction, initialType]);
 
@@ -92,7 +97,8 @@ export function TransactionFormSheet({
       setError(t.transactionForm.errorDate);
       return;
     }
-    onSubmit({ type, amount, categoryId, date });
+    const trimmedNote = note.trim();
+    onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
     onOpenChange(false);
   }
 
@@ -208,6 +214,53 @@ export function TransactionFormSheet({
           </div>
         </div>
 
+        <div>
+          <label htmlFor="note" className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            {t.transactionForm.noteLabel}
+          </label>
+          <input
+            id="note"
+            value={note}
+            maxLength={MAX_NOTE_LENGTH}
+            enterKeyHint="done"
+            autoComplete="off"
+            placeholder={t.transactionForm.notePlaceholder}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            className="w-full rounded-xl border border-neutral-200 px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-900 dark:border-neutral-800 dark:bg-transparent dark:focus:border-white"
+          />
+        </div>
+
+        {!isEditing && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-200 px-3 py-2.5 dark:border-neutral-800">
+            <input
+              type="checkbox"
+              checked={repeatMonthly}
+              onChange={(e) => setRepeatMonthly(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-neutral-900 dark:accent-white"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">{t.transactionForm.repeatMonthly}</span>
+              {repeatMonthly && date && (
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">
+                  {t.transactionForm.repeatMonthlyHint(Number(date.slice(8, 10)))}
+                </span>
+              )}
+            </span>
+          </label>
+        )}
+
+        {isEditing && transaction?.recurringId && (
+          <p className="rounded-xl bg-neutral-100 px-3 py-2 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+            {t.transactionForm.recurringEditHint}
+          </p>
+        )}
+
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
         <div className="flex gap-2 pt-1">
@@ -239,7 +292,13 @@ export function TransactionFormSheet({
             size="sm"
             className="w-full text-neutral-600 dark:text-neutral-300"
             onClick={() => {
-              onRepeat({ type: transaction.type, amount: transaction.amount, categoryId: transaction.categoryId, date: todayKey() });
+              onRepeat({
+                type: transaction.type,
+                amount: transaction.amount,
+                categoryId: transaction.categoryId,
+                date: todayKey(),
+                note: transaction.note,
+              });
               onOpenChange(false);
             }}
           >

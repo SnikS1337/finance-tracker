@@ -1,5 +1,5 @@
 import { useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
-import { Trash2 } from "lucide-react";
+import { Repeat, Trash2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import type { Category, Transaction } from "../../types";
 import { formatSignedCurrency } from "../../lib/currency";
@@ -286,8 +286,21 @@ function SwipeableTransactionRow({
         >
           {category?.icon ?? "❓"}
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {category?.name ?? t.common.unknownCategory}
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-medium">{category?.name ?? t.common.unknownCategory}</span>
+            {transaction.recurringId && (
+              <Repeat
+                size={12}
+                strokeWidth={2}
+                className="shrink-0 text-neutral-400"
+                aria-label={t.transactionsPage.recurringBadge}
+              />
+            )}
+          </span>
+          {transaction.note && (
+            <span className="block truncate text-xs text-neutral-500 dark:text-neutral-400">{transaction.note}</span>
+          )}
         </span>
         <span
           className={cn(

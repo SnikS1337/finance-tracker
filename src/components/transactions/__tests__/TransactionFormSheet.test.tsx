@@ -102,14 +102,40 @@ describe("TransactionFormSheet", () => {
     expect(q<HTMLInputElement>("#date")!.value).toBe(todayKey());
 
     click(buttonByText("Добавить расход"));
-    expect(onSubmit).toHaveBeenCalledWith({ type: "expense", amount: 1000, categoryId: "food", date: todayKey() });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ type: "expense", amount: 1000, categoryId: "food", date: todayKey() });
   });
 
   it("'Repeat today' adds the same operation dated today (edit mode only)", () => {
     const { onRepeat, onSubmit } = render({ transaction: existing });
     click(buttonByText("Повторить сегодня"));
-    expect(onRepeat).toHaveBeenCalledWith({ type: "expense", amount: 45_000, categoryId: "food", date: todayKey() });
+    expect(onRepeat).toHaveBeenCalledTimes(1);
+    expect(onRepeat.mock.calls[0][0]).toMatchObject({ type: "expense", amount: 45_000, categoryId: "food", date: todayKey() });
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("saves a trimmed note, and no note when left empty", () => {
+    const { onSubmit } = render();
+    typeAmount("1000");
+    click(q('[role="radio"]'));
+    const note = q<HTMLInputElement>("#note")!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    act(() => {
+      setter.call(note, "  обед с коллегами  ");
+      note.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    click(buttonByText("Добавить расход"));
+    expect(onSubmit.mock.calls[0][0].note).toBe("обед с коллегами");
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ repeatMonthly: false });
+  });
+
+  it("passes 'repeat every month' through when ticked", () => {
+    const { onSubmit } = render();
+    typeAmount("5000000");
+    click(q('[role="radio"]'));
+    click(q('input[type="checkbox"]'));
+    click(buttonByText("Добавить расход"));
+    expect(onSubmit.mock.calls[0][1]).toMatchObject({ repeatMonthly: true });
   });
 
   it("has no repeat button when adding", () => {

@@ -12,13 +12,22 @@ import { useToday } from "../../hooks/useToday";
 import { orderCategoriesByUsage } from "../../lib/categoryOrder";
 import { findBudgetCrossing } from "../../lib/budgetAlerts";
 import { fromDateKey, getPresetRange } from "../../lib/date-utils";
+import { newId } from "../../lib/id";
 import type { Transaction } from "../../types";
 import { t } from "../../i18n";
 
 export function AppShell() {
   const { state, openAdd, close } = useTransactionSheet();
-  const { transactions, categories, budgets, addTransaction, editTransaction, removeTransaction, restoreTransaction } =
-    useAppData();
+  const {
+    transactions,
+    categories,
+    budgets,
+    addTransaction,
+    editTransaction,
+    removeTransaction,
+    restoreTransaction,
+    addRecurringRule,
+  } = useAppData();
   const { showToast } = useToast();
   const { pathname } = useLocation();
   const today = useToday();
@@ -63,13 +72,30 @@ export function AppShell() {
         categories={orderedCategories}
         transaction={state.transaction}
         initialType={state.initialType}
-        onSubmit={(input) => {
+        onSubmit={(input, options) => {
           if (state.transaction) {
             const id = state.transaction.id;
             const after = transactions.map((tx) => (tx.id === id ? { ...tx, ...input } : tx));
             const note = budgetNote(after);
             editTransaction(id, input);
             showToast({ message: t.toasts.transactionUpdated + note });
+          } else if (options?.repeatMonthly) {
+            // The first occurrence is this operation itself; the rule then adds
+            // one on the same day every month (catching up if the date is in the past).
+            const ruleId = newId();
+            const added = addTransaction({ ...input, recurringId: ruleId });
+            addRecurringRule({
+              id: ruleId,
+              type: input.type,
+              amount: input.amount,
+              categoryId: input.categoryId,
+              ...(input.note ? { note: input.note } : {}),
+              dayOfMonth: fromDateKey(input.date).getDate(),
+              startDate: input.date,
+              lastDate: input.date,
+              createdAt: added.createdAt,
+            });
+            showToast({ message: t.toasts.recurringCreated + budgetNote([...transactions, added]) });
           } else {
             const added = addTransaction(input);
             const note = budgetNote([...transactions, added]);
