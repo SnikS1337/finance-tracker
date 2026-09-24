@@ -24,9 +24,19 @@ interface State {
  *
  * Retrying clears the failed import (see `lazyWithPreload`) and re-renders;
  * it also retries automatically as soon as the browser reports it's back online.
+ *
+ * Chromium remembers a failed dynamic import for the life of the page: the
+ * same chunk URL then fails instantly without touching the network, so a soft
+ * retry can't help there. If the error comes back right after a retry while
+ * the browser is online, the page is reloaded instead (the route is in the URL
+ * and the data in storage, so nothing is lost).
  */
 export class ChunkErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
+  private retried = false;
+
+  /** Overridable in tests. */
+  static reloadPage = () => window.location.reload();
 
   static getDerivedStateFromError(error: Error): State {
     return { error };
@@ -34,9 +44,13 @@ export class ChunkErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     if (import.meta.env.DEV) console.error("[ChunkErrorBoundary]", error, info.componentStack);
+    if (this.retried && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+      ChunkErrorBoundary.reloadPage();
+    }
   }
 
   retry = () => {
+    this.retried = true;
     retryFailedChunks();
     this.setState({ error: null });
   };

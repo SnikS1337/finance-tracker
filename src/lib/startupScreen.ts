@@ -12,6 +12,9 @@ export function hideStartupScreen(): void {
 
   const el = document.getElementById(STARTUP_ID);
   if (!el || el.classList.contains("startup--hide")) return;
+  // index.html detected a failed load (e.g. the stylesheet) and shows "Повторить";
+  // starting an unstyled app underneath would be worse.
+  if ((window as { __appLoadFailed?: boolean }).__appLoadFailed) return;
 
   const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
   if (reduceMotion) {

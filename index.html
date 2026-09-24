@@ -66,6 +66,12 @@
         animation: startup-slide 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
       }
       html.dark .startup__bar::after { background: #fff; opacity: 0.6; }
+      .startup__retry {
+        margin-top: 20px; padding: 10px 18px; border: 0; border-radius: 12px;
+        background: #171717; color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+      }
+      html.dark .startup__retry { background: #fff; color: #171717; }
+      .startup__retry[hidden] { display: none; }
       @keyframes startup-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
       @keyframes startup-fade { to { opacity: 1; } }
       @media (prefers-reduced-motion: reduce) {
@@ -89,7 +95,44 @@
       <p class="startup__text">Загружаем приложение…</p>
       <p class="startup__hint">Ещё немного — почти готово</p>
       <div class="startup__bar" aria-hidden="true"></div>
+      <button type="button" class="startup__retry" hidden>Повторить</button>
     </div>
+    <script>
+      // If the app itself fails to load (the connection dropped mid-way, a
+      // server hiccup), don't leave "Загружаем приложение…" up forever: say so
+      // and offer a reload. Resource errors don't bubble, hence capture.
+      // Once the app has started (startup screen hidden/removed) this is inert.
+      (function () {
+        var shown = false;
+        function running() {
+          var s = document.getElementById("startup");
+          return !s || s.classList.contains("startup--hide");
+        }
+        function fail(slow) {
+          if (shown || running()) return;
+          shown = true;
+          // E.g. the stylesheet failed: the app would start unstyled. Keep this
+          // screen (see startupScreen.ts) so the user can retry instead.
+          window.__appLoadFailed = true;
+          var s = document.getElementById("startup");
+          s.querySelector(".startup__text").textContent = slow ? "Загрузка идёт слишком долго" : "Не удалось загрузить приложение";
+          var hint = s.querySelector(".startup__hint");
+          hint.textContent = "Проверьте подключение к интернету и попробуйте ещё раз.";
+          hint.style.animation = "none";
+          hint.style.opacity = "1";
+          s.querySelector(".startup__bar").style.display = "none";
+          var retry = s.querySelector(".startup__retry");
+          retry.hidden = false;
+          retry.onclick = function () { location.reload(); };
+        }
+        window.addEventListener("error", function (e) {
+          var el = e.target;
+          if (el && (el.tagName === "SCRIPT" || el.tagName === "LINK")) fail(false);
+        }, true);
+        window.addEventListener("unhandledrejection", function () { fail(false); });
+        setTimeout(function () { fail(true); }, 30000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

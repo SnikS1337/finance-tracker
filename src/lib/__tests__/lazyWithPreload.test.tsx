@@ -158,4 +158,35 @@ describe("lazyWithPreload + ChunkErrorBoundary", () => {
     expect(container.querySelector("h1")?.textContent).toBe("Loaded page");
     expect(container.querySelector('[role="status"]')).toBeNull();
   });
+
+  it("reloads the page when the retry fails again while online (Chromium caches failed imports)", async () => {
+    let attempts = 0;
+    const Lazy = lazyWithPreload<object>(() => {
+      attempts += 1;
+      return Promise.reject(offlineError());
+    });
+    let reloads = 0;
+    const originalReload = ChunkErrorBoundary.reloadPage;
+    ChunkErrorBoundary.reloadPage = () => {
+      reloads += 1;
+    };
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      await mount(<Lazy />);
+      await flush();
+      await flush();
+      expect(reloads).toBe(0); // the first failure only shows the message
+      await act(async () => {
+        container.querySelector('[role="alert"] button')!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      await flush();
+      await flush();
+    } finally {
+      console.error = originalError;
+      ChunkErrorBoundary.reloadPage = originalReload;
+    }
+    expect(attempts).toBe(2);
+    expect(reloads).toBe(1);
+  });
 });
