@@ -1,5 +1,6 @@
 import { Card } from "../ui/Card";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
+import { FitText } from "../ui/FitText";
 import { formatCurrency } from "../../lib/currency";
 import { t } from "../../i18n";
 
@@ -20,11 +21,11 @@ export function QuickStats({ averagePerDay, medianPerDay, transactionCount, spen
   return (
     <div className="grid grid-cols-2 gap-2.5 md:gap-3">
       {items.map((item) => (
-        <Card key={item.label} className="!p-3.5">
+        <Card key={item.label} className="min-w-0 !p-3.5">
           <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{item.label}</p>
-          <p className="mt-1 truncate text-base font-semibold tabular-nums">
+          <FitText className="mt-1 text-base font-semibold tabular-nums">
             <AnimatedNumber value={item.value} format={item.format} />
-          </p>
+          </FitText>
         </Card>
       ))}
     </div>

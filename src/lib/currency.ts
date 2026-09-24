@@ -16,7 +16,8 @@ export function formatGrouped(value: number): string {
 export function formatCurrency(amount: number): string {
   const safe = Number.isFinite(amount) ? Math.round(amount) : 0;
   const formatted = formatGrouped(Math.abs(safe));
-  return `${safe < 0 ? "-" : ""}${formatted} ₫`;
+  // Non-breaking space: the ₫ sign never wraps onto its own line.
+  return `${safe < 0 ? "-" : ""}${formatted}\u00A0₫`;
 }
 
 /** Signed variant used in transaction lists: "+30 000 000 ₫" / "-250 000 ₫". */

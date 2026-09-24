@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Card } from "../ui/Card";
+import { FitText } from "../ui/FitText";
 import { Button } from "../ui/Button";
 import { PeriodSelector } from "../period/PeriodSelector";
 import { usePeriod } from "../../hooks/usePeriod";
@@ -151,22 +152,22 @@ export function ReportGenerator() {
             <p className="mt-1 text-sm text-neutral-500">{formatRangeLabel(range)}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 [&>*]:min-w-0">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.expenses}</p>
-              <p className="mt-0.5 text-lg font-bold leading-tight tabular-nums">{formatCurrency(expenses)}</p>
+              <FitText className="mt-0.5 text-lg font-bold leading-tight tabular-nums">{formatCurrency(expenses)}</FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.income}</p>
-              <p className="mt-0.5 text-lg font-bold leading-tight tabular-nums text-emerald-500">{formatCurrency(income)}</p>
+              <FitText className="mt-0.5 text-lg font-bold leading-tight tabular-nums text-emerald-500">{formatCurrency(income)}</FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.balance}</p>
-              <p className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(balance)}</p>
+              <FitText className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(balance)}</FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.avgPerDay}</p>
-              <p className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(avg)}</p>
+              <FitText className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(avg)}</FitText>
             </div>
           </div>
 

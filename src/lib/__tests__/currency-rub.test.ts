@@ -114,3 +114,11 @@ describe("refreshRateIfStale (in-flight guard)", () => {
     await expect(refreshRateIfStale()).resolves.toBeNull();
   });
 });
+
+describe("formatCurrency on one line", () => {
+  it("keeps the ₫ sign attached to the number (non-breaking space)", async () => {
+    const { formatCurrency } = await import("../currency");
+    expect(formatCurrency(678_678_678_678)).toMatch(/678\s678\s678\s678 ₫$/);
+    expect(formatCurrency(-5)).toBe("-5 ₫");
+  });
+});
