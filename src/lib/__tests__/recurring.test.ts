@@ -164,3 +164,67 @@ describe("starting a repeating operation", () => {
     expect(storage.getRecurringRules()).toEqual([]);
   });
 });
+
+describe("recurring edge cases (1.5.1)", () => {
+  it("a rule on the 29th: 28 Feb in a common year, 29 Feb in a leap year, back to the 29th after", () => {
+    const r29 = rule({ dayOfMonth: 29, lastDate: "2027-01-29" });
+    expect(dueOccurrences(r29, "2027-03-31")).toEqual(["2027-02-28", "2027-03-29"]);
+    expect(dueOccurrences({ ...r29, lastDate: "2028-01-29" }, "2028-03-31")).toEqual(["2028-02-29", "2028-03-29"]);
+  });
+
+  it("the 30th and 31st in February and in 30-day months", () => {
+    expect(dueOccurrences(rule({ dayOfMonth: 30, lastDate: "2027-01-30" }), "2027-04-30")).toEqual([
+      "2027-02-28",
+      "2027-03-30",
+      "2027-04-30",
+    ]);
+    expect(dueOccurrences(rule({ dayOfMonth: 31, lastDate: "2027-05-31" }), "2027-08-31")).toEqual([
+      "2027-06-30",
+      "2027-07-31",
+      "2027-08-31",
+    ]);
+  });
+
+  it("crosses December → January, including a catch-up over the new year", () => {
+    expect(dueOccurrences(rule({ dayOfMonth: 31, lastDate: "2026-11-30" }), "2027-02-01")).toEqual([
+      "2026-12-31",
+      "2027-01-31",
+    ]);
+  });
+
+  it("created on the last day of a month (31 Jan) → 28 Feb, not 3 March", () => {
+    expect(dueOccurrences(rule({ dayOfMonth: 31, startDate: "2027-01-31", lastDate: "2027-01-31" }), "2027-03-05")).toEqual([
+      "2027-02-28",
+    ]);
+  });
+
+  it("two identical rules each add their own operation (independent ids)", () => {
+    const a = rule({ id: "a", dayOfMonth: 1, lastDate: "2026-08-01" });
+    const b = rule({ id: "b", dayOfMonth: 1, lastDate: "2026-08-01" });
+    const r = materializeRecurring([a, b], [], "2026-09-24", "now");
+    expect(r.transactions.map((t) => t.id).sort()).toEqual(["a@2026-09-01", "b@2026-09-01"]);
+  });
+
+  it("a long absence is caught up but capped (no runaway loop)", () => {
+    const dates = dueOccurrences(rule({ dayOfMonth: 1, lastDate: "2000-01-01" }), "2026-09-24");
+    expect(dates.length).toBe(120);
+    expect(dates[0]).toBe("2000-02-01");
+  });
+});
+
+describe("stopping a rule (storage)", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    storage.saveCategories([cat]);
+    storage.saveTransactions([]);
+  });
+
+  it("keeps the operations it already added, and adds no more", () => {
+    storage.createRecurringRule(rule({ dayOfMonth: 1, lastDate: "2026-07-01" }));
+    expect(storage.applyRecurring("2026-09-24")).toBe(2);
+    storage.deleteRecurringRule("r1");
+    expect(storage.getTransactions()).toHaveLength(2);
+    expect(storage.applyRecurring("2026-12-24")).toBe(0);
+    expect(storage.getTransactions()).toHaveLength(2);
+  });
+});
