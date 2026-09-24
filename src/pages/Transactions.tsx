@@ -21,12 +21,22 @@ export default function Transactions() {
   const { showToast } = useToast();
   const period = usePeriod("thisMonth");
   const [searchParams, setSearchParams] = useSearchParams();
-  const categoryFilter = searchParams.get("category") ?? "all";
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [sort, setSort] = useState<SortOption>("newest");
   const [query, setQuery] = useState("");
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  // A link can point at a category that no longer exists (deleted) — then the
+  // filter is ignored instead of silently showing an empty list under "All".
+  const requestedCategory = searchParams.get("category");
+  const categoryFilter = requestedCategory && categoryById.has(requestedCategory) ? requestedCategory : "all";
+  // Archived categories are hidden from the filter list — except the one that
+  // is currently filtered on (e.g. opened from a chart), so the select shows
+  // what is actually being filtered.
+  const filterCategories = useMemo(
+    () => categories.filter((c) => !c.isArchived || c.id === categoryFilter),
+    [categories, categoryFilter]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -96,13 +106,12 @@ export default function Transactions() {
           className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm dark:border-neutral-800 dark:bg-surface-dark-subtle"
         >
           <option value="all">{t.transactionsPage.allCategories}</option>
-          {categories
-            .filter((c) => !c.isArchived)
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.icon} {c.name}
-              </option>
-            ))}
+          {filterCategories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.name}
+              {c.isArchived ? ` · ${t.categories.archived}` : ""}
+            </option>
+          ))}
         </select>
         <select
           value={sort}
