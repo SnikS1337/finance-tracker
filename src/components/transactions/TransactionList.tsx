@@ -159,6 +159,8 @@ function SwipeableTransactionRow({
   const offset = useRef(0);
   const gesture = useRef({ startX: 0, startY: 0, tracking: false, horizontal: false });
   const animation = useRef<Animation | null>(null);
+  const zoneRef = useRef<HTMLSpanElement>(null);
+  const zoneFade = useRef<Animation | null>(null);
   const deleting = useRef(false);
   // True when the current touch sequence was a real horizontal drag (or
   // interrupted a running animation), so the click the browser may synthesize
@@ -206,6 +208,8 @@ function SwipeableTransactionRow({
     const x = row ? currentTranslateX(row) : offset.current;
     running.cancel();
     animation.current = null;
+    zoneFade.current?.cancel();
+    zoneFade.current = null;
     paint(x);
     return true;
   };
@@ -228,11 +232,24 @@ function SwipeableTransactionRow({
     row.dataset.swiping = "true";
     const anim = row.animate(keyframes, { duration, easing: offsets ? "linear" : easing });
     animation.current = anim;
+    // Returning to rest: the red zone fades out early, so the slow end of the
+    // easing doesn't leave a thin red strip at the edge.
+    zoneFade.current?.cancel();
+    zoneFade.current =
+      finalX === 0 && zoneRef.current && typeof zoneRef.current.animate === "function"
+        ? zoneRef.current.animate([{ opacity: 1 }, { opacity: 0 }], {
+            duration: Math.round(duration * 0.45),
+            easing: "ease-out",
+            fill: "forwards",
+          })
+        : null;
     anim.onfinish = () => {
       if (animation.current !== anim) return;
       animation.current = null;
       paint(finalX);
       anim.cancel();
+      zoneFade.current?.cancel();
+      zoneFade.current = null;
       done?.();
     };
   };
@@ -369,6 +386,7 @@ function SwipeableTransactionRow({
             row, and while swiping it's revealed seamlessly by the same
             transform. The 1px overlap hides any sub-pixel seam. */}
         <span
+          ref={zoneRef}
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute inset-y-0 left-[calc(100%-1px)] flex w-40 items-center bg-red-500 text-white",

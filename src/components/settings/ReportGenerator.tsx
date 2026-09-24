@@ -40,7 +40,10 @@ function FitToWidth({ width, children }: { width: number; children: ReactNode })
   }, [width]);
 
   return (
-    <div ref={outerRef} className="flex justify-center overflow-hidden">
+    // items-start: the inner box keeps its own height. With the default
+    // `stretch` it took the outer box's (scaled, smaller) height, which then
+    // shrank the next measurement — the preview collapsed to a sliver.
+    <div ref={outerRef} className="flex items-start justify-center overflow-hidden">
       <div ref={innerRef} className="shrink-0 origin-top" style={{ width }}>
         {children}
       </div>

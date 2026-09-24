@@ -83,7 +83,26 @@ function click(el: Element | null) {
   });
 }
 
+const advancedToggle = () => q<HTMLButtonElement>('button[aria-controls="transaction-advanced"]')!;
+function openAdvanced() {
+  click(advancedToggle());
+  expect(advancedToggle().getAttribute("aria-expanded")).toBe("true");
+}
+
 describe("TransactionFormSheet", () => {
+  it("keeps date, note and 'repeat monthly' under a collapsed 'Дополнительно' with a summary", () => {
+    render();
+    expect(advancedToggle().getAttribute("aria-expanded")).toBe("false");
+    expect(q("#transaction-advanced")!.hasAttribute("inert")).toBe(true);
+    expect(advancedToggle().textContent).toContain("Дополнительно");
+    expect(advancedToggle().textContent).toContain("Сегодня");
+    openAdvanced();
+    expect(q("#transaction-advanced")!.hasAttribute("inert")).toBe(false);
+    click(buttonByText("Вчера"));
+    click(q('input[type="checkbox"]'));
+    expect(advancedToggle().textContent).toContain("Вчера · каждый месяц");
+  });
+
   it("shows a live rouble equivalent under the amount", () => {
     render();
     const hint = () => q<HTMLInputElement>("#amount")!.parentElement!.nextElementSibling!.textContent;
@@ -96,6 +115,7 @@ describe("TransactionFormSheet", () => {
     const { onSubmit } = render();
     typeAmount("1000");
     click(q('[role="radio"]'));
+    openAdvanced();
     click(buttonByText("Вчера"));
     expect(q<HTMLInputElement>("#date")!.value).toBe(toDateKey(subDays(new Date(), 1)));
     click(buttonByText("Сегодня"));
@@ -118,6 +138,7 @@ describe("TransactionFormSheet", () => {
     const { onSubmit } = render();
     typeAmount("1000");
     click(q('[role="radio"]'));
+    openAdvanced();
     const note = q<HTMLInputElement>("#note")!;
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
     act(() => {
@@ -133,6 +154,7 @@ describe("TransactionFormSheet", () => {
     const { onSubmit } = render();
     typeAmount("5000000");
     click(q('[role="radio"]'));
+    openAdvanced();
     click(q('input[type="checkbox"]'));
     click(buttonByText("Добавить расход"));
     expect(onSubmit.mock.calls[0][1]).toMatchObject({ repeatMonthly: true });

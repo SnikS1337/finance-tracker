@@ -13,7 +13,7 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
   const active = navIndex(pathname);
   const onTabClick = useTabClick();
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-neutral-200 bg-white px-4 py-6 dark:border-neutral-800 dark:bg-surface-dark md:flex">
+    <aside className="app-nav--side fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-neutral-200 bg-white px-4 py-6 dark:border-neutral-800 dark:bg-surface-dark md:flex">
       <div className="mb-8 flex items-center gap-2 px-2">
         <Wallet size={22} />
         <span className="font-semibold">{t.nav.appName}</span>

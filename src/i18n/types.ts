@@ -126,6 +126,8 @@ export interface Dictionary {
     noteLabel: string;
     notePlaceholder: string;
     repeatMonthly: string;
+    advancedLabel: string;
+    advancedRepeatSummary: string;
     repeatMonthlyHint: (day: number) => string;
     recurringEditHint: string;
   };

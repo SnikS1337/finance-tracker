@@ -120,6 +120,8 @@ export const ru: Dictionary = {
     noteLabel: "Заметка",
     notePlaceholder: "Необязательно",
     repeatMonthly: "Повторять каждый месяц",
+    advancedLabel: "Дополнительно",
+    advancedRepeatSummary: "каждый месяц",
     repeatMonthlyHint: (day) => `Будет добавляться автоматически ${day}-го числа каждого месяца`,
     recurringEditHint: "Регулярная операция: изменения коснутся только этой записи. Остановить повтор можно в Настройках.",
   },

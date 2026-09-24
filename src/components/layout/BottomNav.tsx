@@ -14,7 +14,7 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
   const onTabClick = useTabClick();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-neutral-800 dark:bg-surface-dark/95 md:hidden">
+    <nav className="app-nav--bottom fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)] dark:border-neutral-800 dark:bg-surface-dark/95 md:hidden">
       {/* Five equal columns (the middle one reserved for "+") so every tab sits at
           a fixed, symmetric position. `justify-around` spaced items by their label
           widths, so "Операции" ended up farther from "+" than "Аналитика". */}
