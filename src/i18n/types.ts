@@ -218,6 +218,11 @@ export interface Dictionary {
     aboutBody: string;
     version: string;
   };
+  update: {
+    available: string;
+    reload: string;
+    later: string;
+  };
   recurring: {
     empty: string;
     monthlyOn: (day: number) => string;

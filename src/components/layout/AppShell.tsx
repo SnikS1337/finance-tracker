@@ -2,6 +2,7 @@ import { Suspense, useLayoutEffect, useMemo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
+import { UpdateBanner } from "./UpdateBanner";
 import { TransactionFormSheet } from "../transactions/TransactionFormSheet";
 import { useTransactionSheet } from "../../hooks/useTransactionSheet";
 import { useAppData } from "../../hooks/useAppData";
@@ -65,6 +66,7 @@ export function AppShell() {
         </ChunkErrorBoundary>
       </main>
       <BottomNav onAdd={() => openAdd()} />
+      <UpdateBanner />
 
       <TransactionFormSheet
         open={state.open}

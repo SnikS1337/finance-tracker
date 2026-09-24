@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0ea5e9" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Browser UI (address/status bar) matches the app background; the script
+         below and useTheme.ts switch it with the in-app theme. -->
+    <meta name="theme-color" content="#f7f8fa" />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Быстрый, приватный офлайн-трекер личных финансов." />
     <title>Финансовый учёт</title>
@@ -16,7 +19,10 @@
           var s = JSON.parse(localStorage.getItem("pft:settings") || "null");
           var theme = (s && s.theme) || "system";
           var dark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-          if (dark) document.documentElement.classList.add("dark");
+          if (dark) {
+            document.documentElement.classList.add("dark");
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", "#14161a");
+          }
         } catch (e) {}
       })();
     </script>
