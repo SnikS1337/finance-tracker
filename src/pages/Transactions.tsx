@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { useUrlPeriod } from "../hooks/usePeriod";
@@ -25,6 +25,8 @@ export default function Transactions() {
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [sort, setSort] = useState<SortOption>("newest");
   const [query, setQuery] = useState("");
+  // Typing stays instant; the (possibly long) list catches up right after.
+  const deferredQuery = useDeferredValue(query);
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   // A link can point at a category that no longer exists (deleted) — then the
@@ -44,7 +46,7 @@ export default function Transactions() {
       if (!isDateKeyInRange(tx.date, period.range)) return false;
       if (typeFilter !== "all" && tx.type !== typeFilter) return false;
       if (categoryFilter !== "all" && tx.categoryId !== categoryFilter) return false;
-      return matchesSearch(tx, categoryById.get(tx.categoryId)?.name ?? "", query);
+      return matchesSearch(tx, categoryById.get(tx.categoryId)?.name ?? "", deferredQuery);
     });
 
     list = list.slice().sort((a, b) => {
@@ -60,7 +62,8 @@ export default function Transactions() {
       }
     });
     return list;
-  }, [transactions, period.range, typeFilter, categoryFilter, query, sort, categoryById]);
+  }, [transactions, period.range, typeFilter, categoryFilter, deferredQuery, sort, categoryById]);
+  const listKey = [period.preset, period.customStart, period.customEnd, typeFilter, categoryFilter, deferredQuery, sort].join("|");
 
   return (
     <div className="space-y-5">
@@ -150,6 +153,7 @@ export default function Transactions() {
       ) : (
         <TransactionList
           transactions={filtered}
+          resetKey={listKey}
           categories={categories}
           onSelect={openEdit}
           onDelete={(tx) => {

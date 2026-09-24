@@ -101,6 +101,7 @@ export interface Dictionary {
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
     deleteAction: string;
+    showMore: (remaining: number) => string;
     recurringBadge: string;
     deleteConfirmTitle: string;
     deleteConfirmDescription: string;

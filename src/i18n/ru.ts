@@ -96,6 +96,7 @@ export const ru: Dictionary = {
     emptyTitleNoMatch: "Ничего не найдено",
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
     deleteAction: "Удалить операцию",
+    showMore: (remaining) => `Показать ещё (осталось ${remaining})`,
     recurringBadge: "Регулярная операция",
     deleteConfirmTitle: "Удалить операцию?",
     deleteConfirmDescription: "Сразу после удаления её можно будет вернуть кнопкой «Отменить».",

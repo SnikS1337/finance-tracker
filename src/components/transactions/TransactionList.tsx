@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type TouchEvent } from "react";
 import { Repeat, Trash2 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import type { Category, Transaction } from "../../types";
@@ -118,8 +118,14 @@ function useIsTouchPrimary() {
 // Row
 // ---------------------------------------------------------------------------
 
+/** Rows rendered at first and added each time the end of the list comes near. */
+export const LIST_PAGE_SIZE = 100;
+
 interface Props {
+  /** Already filtered and sorted; days appear in the order of their first operation. */
   transactions: Transaction[];
+  /** Changing it (new filter, period, search, sort) starts again from the first page. */
+  resetKey?: string;
   categories: Category[];
   onSelect: (transaction: Transaction) => void;
   onDelete?: (transaction: Transaction) => void;
@@ -453,7 +459,26 @@ function SwipeableTransactionRow({
   );
 }
 
-export function TransactionList({ transactions, categories, onSelect, onDelete }: Props) {
+export function TransactionList({ transactions, categories, onSelect, onDelete, resetKey = "" }: Props) {
+  // Rendering thousands of rows at once took seconds on a phone ("Этот год"
+  // with a few thousand operations). Rows are rendered in pages instead; the
+  // next page is added before the end of the list scrolls into view.
+  const [visible, setVisible] = useState({ key: resetKey, count: LIST_PAGE_SIZE });
+  if (visible.key !== resetKey) setVisible({ key: resetKey, count: LIST_PAGE_SIZE });
+  const visibleCount = visible.key === resetKey ? visible.count : LIST_PAGE_SIZE;
+  const hasMore = transactions.length > visibleCount;
+  const showMore = useCallback(() => setVisible((v) => ({ ...v, count: v.count + LIST_PAGE_SIZE })), []);
+  const sentinelRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && showMore(), {
+      rootMargin: "800px 0px",
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, visibleCount, showMore]);
+
   const isTouchPrimary = useIsTouchPrimary();
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
@@ -469,17 +494,24 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
     onDelete?.(tx);
   };
 
+  // Days in the order of the (already sorted) list: "Сначала старые" shows the
+  // oldest day first. They used to be re-sorted newest-first regardless.
   const groups = new Map<string, Transaction[]>();
   for (const tx of transactions) {
     if (!groups.has(tx.date)) groups.set(tx.date, []);
     groups.get(tx.date)!.push(tx);
   }
-  const sortedDates = [...groups.keys()].sort((a, b) => b.localeCompare(a));
+  const sortedDates = [...groups.keys()];
+  // Day totals always cover the whole day, even when only part of it is rendered yet.
+  let budgetLeft = visibleCount;
 
   return (
     <div className="space-y-6">
       {sortedDates.map((date) => {
+        if (budgetLeft <= 0) return null;
         const dayTransactions = groups.get(date)!;
+        const shown = dayTransactions.slice(0, budgetLeft);
+        budgetLeft -= shown.length;
         const dayTotal = dayTransactions.reduce(
           (sum, tx) => sum + (tx.type === "income" ? tx.amount : -tx.amount),
           0
@@ -497,7 +529,7 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
             {/* translateZ(0) makes Safari honour the rounded clip for the
                 transformed rows inside (otherwise square red corners can poke out). */}
             <div className="overflow-hidden rounded-xl2 border border-neutral-200 bg-white [transform:translateZ(0)] dark:border-neutral-800 dark:bg-surface-dark-subtle">
-              {dayTransactions.map((tx, i) => (
+              {shown.map((tx, i) => (
                 <SwipeableTransactionRow
                   key={tx.id}
                   transaction={tx}
@@ -515,6 +547,18 @@ export function TransactionList({ transactions, categories, onSelect, onDelete }
           </div>
         );
       })}
+
+      {hasMore && (
+        // Also a real button: works without IntersectionObserver and by keyboard.
+        <button
+          ref={sentinelRef}
+          type="button"
+          onClick={showMore}
+          className="w-full rounded-xl py-3 text-sm font-medium text-neutral-500 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
+        >
+          {t.transactionsPage.showMore(transactions.length - visibleCount)}
+        </button>
+      )}
 
       <ConfirmDialog
         open={pendingDelete !== null}
