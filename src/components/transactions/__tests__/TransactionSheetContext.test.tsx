@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { TransactionSheetProvider } from "../TransactionSheetContext";
 import { useTransactionSheet, useTransactionSheetActions } from "../../../hooks/useTransactionSheet";
@@ -15,7 +15,10 @@ let openAdd: (() => void) | null = null;
 
 function Page() {
   pageRenders++;
-  openAdd = useTransactionSheetActions().openAdd;
+  const actions = useTransactionSheetActions();
+  useEffect(() => {
+    openAdd = actions.openAdd;
+  }, [actions]);
   return null;
 }
 

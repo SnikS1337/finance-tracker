@@ -1,12 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
-
-/** Approximate width of a string in `em` (digits and signs ≈ 0.6em, spaces ≈ 0.3em). */
-export function estimateWidthEm(text: string): number {
-  let em = 0;
-  for (const ch of text) em += ch === " " || ch === " " || ch === " " ? 0.3 : 0.62;
-  return em;
-}
+import { estimateWidthEm } from "../../lib/fitText";
 
 /**
  * One line of text (typically an amount) whose font shrinks to fit the width

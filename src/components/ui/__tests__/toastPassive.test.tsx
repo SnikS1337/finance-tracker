@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ToastProvider } from "../Toast";
 import { useToast } from "../../../hooks/useToast";
@@ -12,7 +12,10 @@ let container: HTMLDivElement;
 let api: ToastContextValue;
 
 function Grab() {
-  api = useToast();
+  const toast = useToast();
+  useEffect(() => {
+    api = toast;
+  }, [toast]);
   return null;
 }
 

@@ -76,9 +76,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    // The maps themselves never change (only their contents), so capturing them is safe.
+    const pending = timers.current;
+    const removing = removeTimers.current;
     return () => {
-      timers.current.forEach((timer) => clearTimeout(timer));
-      removeTimers.current.forEach((timer) => clearTimeout(timer));
+      pending.forEach((timer) => clearTimeout(timer));
+      removing.forEach((timer) => clearTimeout(timer));
     };
   }, []);
 

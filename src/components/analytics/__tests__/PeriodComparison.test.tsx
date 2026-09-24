@@ -23,7 +23,8 @@ describe("PeriodComparison", () => {
 
 describe("FitText", () => {
   it("sizes the font from the text length and the box width (CSS container units)", async () => {
-    const { FitText, estimateWidthEm } = await import("../../ui/FitText");
+    const { FitText } = await import("../../ui/FitText");
+    const { estimateWidthEm } = await import("../../../lib/fitText");
     expect(estimateWidthEm("1 000")).toBeCloseTo(4 * 0.62 + 0.3);
     const container = document.createElement("div");
     const root = createRoot(container);
