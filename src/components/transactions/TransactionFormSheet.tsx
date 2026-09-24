@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, ChevronDown, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Sheet } from "../ui/Sheet";
@@ -59,6 +59,9 @@ export function TransactionFormSheet({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rate = useExchangeRate();
+  // A double tap (or Enter + tap) must not add the same operation twice: the
+  // second call arrives before the sheet has closed. Reset when it opens again.
+  const submitted = useRef(false);
 
   // Resets the form to match whatever is being opened (blank for "add", populated
   // for "edit"). Deliberate: this synchronizes local form state with the `transaction`
@@ -81,6 +84,7 @@ export function TransactionFormSheet({
     }
     setRepeatMonthly(false);
     setAdvancedOpen(false);
+    submitted.current = false;
     setError(null);
   }, [open, transaction, initialType]);
 
@@ -105,6 +109,7 @@ export function TransactionFormSheet({
     .join(" · ");
 
   function handleSubmit() {
+    if (submitted.current) return;
     const amount = parseAmountInput(amountRaw);
     if (amount <= 0) {
       setError(t.transactionForm.errorAmount);
@@ -120,9 +125,11 @@ export function TransactionFormSheet({
       return;
     }
     const trimmedNote = note.trim();
+    submitted.current = true;
     try {
       onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
     } catch {
+      submitted.current = false; // not saved: the user can try again
       // Not saved (already reported, e.g. storage full): keep the form and what was typed.
       return;
     }
@@ -366,6 +373,8 @@ export function TransactionFormSheet({
             size="sm"
             className="w-full text-neutral-600 dark:text-neutral-300"
             onClick={() => {
+              if (submitted.current) return;
+              submitted.current = true;
               try {
                 onRepeat({
                   type: transaction.type,
@@ -375,6 +384,7 @@ export function TransactionFormSheet({
                   note: transaction.note,
                 });
               } catch {
+                submitted.current = false;
                 return; // not saved (reported); keep the sheet open
               }
               onOpenChange(false);
