@@ -6,10 +6,32 @@ interface Props {
   categories: Category[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Shown in the empty state (no active category of this type): opens category management. */
+  type?: Category["type"];
+  onManageCategories?: () => void;
 }
 
-export function CategoryPicker({ categories, selectedId, onSelect }: Props) {
+export function CategoryPicker({ categories, selectedId, onSelect, type = "expense", onManageCategories }: Props) {
   const active = categories.filter((c) => !c.isArchived);
+  if (active.length === 0) {
+    // All deleted or archived: without this the form showed an empty grid and
+    // nothing could be added, with no hint why.
+    return (
+      <div className="rounded-xl border border-dashed border-neutral-300 px-4 py-4 text-center dark:border-neutral-700">
+        <p className="text-sm font-medium">{t.transactionForm.noCategories(type)}</p>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t.transactionForm.noCategoriesHint}</p>
+        {onManageCategories && (
+          <button
+            type="button"
+            onClick={onManageCategories}
+            className="mt-3 rounded-lg bg-neutral-900 px-3 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+          >
+            {t.transactionForm.noCategoriesCta}
+          </button>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={t.transactionForm.categoryLabel}>
       {active.map((c) => {

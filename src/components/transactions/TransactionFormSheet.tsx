@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, ChevronDown, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { Sheet } from "../ui/Sheet";
@@ -22,6 +22,8 @@ interface Props {
   onDelete?: (id: string) => void;
   /** Edit mode: add the same operation again, dated today. */
   onRepeat?: (input: NewTransactionInput) => void;
+  /** Opens category management (offered when there's no category to pick). */
+  onManageCategories?: () => void;
 }
 
 const TYPE_LABEL: Record<TransactionType, string> = {
@@ -43,6 +45,7 @@ export function TransactionFormSheet({
   onSubmit,
   onDelete,
   onRepeat,
+  onManageCategories,
 }: Props) {
   const isEditing = !!transaction;
   const [type, setType] = useState<TransactionType>(initialType);
@@ -56,6 +59,9 @@ export function TransactionFormSheet({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rate = useExchangeRate();
+  // A double tap (or Enter + tap) must not add the same operation twice: the
+  // second call arrives before the sheet has closed. Reset when it opens again.
+  const submitted = useRef(false);
 
   // Resets the form to match whatever is being opened (blank for "add", populated
   // for "edit"). Deliberate: this synchronizes local form state with the `transaction`
@@ -78,6 +84,7 @@ export function TransactionFormSheet({
     }
     setRepeatMonthly(false);
     setAdvancedOpen(false);
+    submitted.current = false;
     setError(null);
   }, [open, transaction, initialType]);
 
@@ -102,6 +109,7 @@ export function TransactionFormSheet({
     .join(" · ");
 
   function handleSubmit() {
+    if (submitted.current) return;
     const amount = parseAmountInput(amountRaw);
     if (amount <= 0) {
       setError(t.transactionForm.errorAmount);
@@ -117,7 +125,14 @@ export function TransactionFormSheet({
       return;
     }
     const trimmedNote = note.trim();
-    onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
+    submitted.current = true;
+    try {
+      onSubmit({ type, amount, categoryId, date, note: trimmedNote || undefined }, { repeatMonthly: !isEditing && repeatMonthly });
+    } catch {
+      submitted.current = false; // not saved: the user can try again
+      // Not saved (already reported, e.g. storage full): keep the form and what was typed.
+      return;
+    }
     onOpenChange(false);
   }
 
@@ -196,7 +211,13 @@ export function TransactionFormSheet({
           <span className="mb-1 block text-xs font-medium text-neutral-500 dark:text-neutral-400">
             {t.transactionForm.categoryLabel}
           </span>
-          <CategoryPicker categories={categoriesForType} selectedId={categoryId} onSelect={setCategoryId} />
+          <CategoryPicker
+            categories={categoriesForType}
+            selectedId={categoryId}
+            onSelect={setCategoryId}
+            type={type}
+            onManageCategories={onManageCategories}
+          />
         </div>
 
         <div className="rounded-xl border border-neutral-200 dark:border-neutral-800">
@@ -325,7 +346,11 @@ export function TransactionFormSheet({
               type="button"
               variant="danger"
               onClick={() => {
-                onDelete(transaction.id);
+                try {
+                  onDelete(transaction.id);
+                } catch {
+                  return; // not deleted (reported); keep the sheet open
+                }
                 onOpenChange(false);
               }}
             >
@@ -348,13 +373,20 @@ export function TransactionFormSheet({
             size="sm"
             className="w-full text-neutral-600 dark:text-neutral-300"
             onClick={() => {
-              onRepeat({
-                type: transaction.type,
-                amount: transaction.amount,
-                categoryId: transaction.categoryId,
-                date: todayKey(),
-                note: transaction.note,
-              });
+              if (submitted.current) return;
+              submitted.current = true;
+              try {
+                onRepeat({
+                  type: transaction.type,
+                  amount: transaction.amount,
+                  categoryId: transaction.categoryId,
+                  date: todayKey(),
+                  note: transaction.note,
+                });
+              } catch {
+                submitted.current = false;
+                return; // not saved (reported); keep the sheet open
+              }
               onOpenChange(false);
             }}
           >

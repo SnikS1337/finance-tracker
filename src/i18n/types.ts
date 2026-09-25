@@ -101,6 +101,7 @@ export interface Dictionary {
     emptyTitleNoMatch: string;
     emptyDescriptionNoMatch: string;
     deleteAction: string;
+    showMore: (remaining: number) => string;
     recurringBadge: string;
     deleteConfirmTitle: string;
     deleteConfirmDescription: string;
@@ -113,6 +114,9 @@ export interface Dictionary {
     income: string;
     amountLabel: string;
     categoryLabel: string;
+    noCategories: (type: "expense" | "income") => string;
+    noCategoriesHint: string;
+    noCategoriesCta: string;
     dateLabel: string;
     saveChanges: string;
     addExpenseCta: string;

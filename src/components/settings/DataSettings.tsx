@@ -25,7 +25,11 @@ export function DataSettings() {
       showToast({ message: t.toasts.backupImported });
       setImportError(null);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : t.data.importGenericError);
+      // Our own errors (invalid backup, storage full) carry a user-facing message;
+      // anything else — e.g. a file that isn't JSON at all, whose SyntaxError
+      // text is technical English — gets the generic "not a backup" message.
+      const ours = err instanceof storage.InvalidBackupError || err instanceof storage.StorageWriteError;
+      setImportError(ours ? (err as Error).message : t.errors.notValidBackup);
     }
   }
 

@@ -163,11 +163,20 @@ export function ReportGenerator() {
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.balance}</p>
-              <FitText className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(balance)}</FitText>
+              <FitText
+                className={cn(
+                  // Same size as expenses/income, coloured like in the app:
+                  // a loss is red, a surplus green.
+                  "mt-0.5 text-lg font-bold leading-tight tabular-nums",
+                  balance < 0 ? "text-red-500" : balance > 0 ? "text-emerald-500" : undefined
+                )}
+              >
+                {formatCurrency(balance)}
+              </FitText>
             </div>
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{t.report.avgPerDay}</p>
-              <FitText className="mt-0.5 text-base font-bold leading-tight tabular-nums">{formatCurrency(avg)}</FitText>
+              <FitText className="mt-0.5 text-lg font-bold leading-tight tabular-nums">{formatCurrency(avg)}</FitText>
             </div>
           </div>
 

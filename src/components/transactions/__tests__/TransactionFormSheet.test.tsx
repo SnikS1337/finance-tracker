@@ -165,3 +165,37 @@ describe("TransactionFormSheet", () => {
     expect(buttonByText("Повторить сегодня")).toBeNull();
   });
 });
+
+describe("TransactionFormSheet without categories", () => {
+  it("explains why nothing can be picked and offers to open category management", () => {
+    const onManageCategories = vi.fn();
+    render({ categories: [{ ...categories[0], isArchived: true }, categories[1]], onManageCategories });
+    expect(document.body.textContent).toContain("Нет категорий расходов");
+    click(buttonByText("Открыть категории"));
+    expect(onManageCategories).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TransactionFormSheet double submit", () => {
+  it("a double tap on the submit button adds the operation once", () => {
+    const { onSubmit } = render();
+    typeAmount("5000");
+    click(q('[role="radio"]'));
+    const submit = buttonByText("Добавить расход")!;
+    click(submit);
+    click(submit);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("can submit again after a failed save", () => {
+    const onSubmit = vi.fn(() => {
+      throw new Error("storage full");
+    });
+    render({ onSubmit });
+    typeAmount("5000");
+    click(q('[role="radio"]'));
+    click(buttonByText("Добавить расход"));
+    click(buttonByText("Добавить расход"));
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+  });
+});

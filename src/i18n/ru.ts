@@ -96,6 +96,7 @@ export const ru: Dictionary = {
     emptyTitleNoMatch: "Ничего не найдено",
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
     deleteAction: "Удалить операцию",
+    showMore: (remaining) => `Показать ещё (осталось ${remaining})`,
     recurringBadge: "Регулярная операция",
     deleteConfirmTitle: "Удалить операцию?",
     deleteConfirmDescription: "Сразу после удаления её можно будет вернуть кнопкой «Отменить».",
@@ -108,6 +109,9 @@ export const ru: Dictionary = {
     income: "Доход",
     amountLabel: "Сумма",
     categoryLabel: "Категория",
+    noCategories: (type) => (type === "income" ? "Нет категорий доходов" : "Нет категорий расходов"),
+    noCategoriesHint: "Все удалены или в архиве. Создайте категорию или верните из архива в Настройках.",
+    noCategoriesCta: "Открыть категории",
     dateLabel: "Дата",
     saveChanges: "Сохранить изменения",
     addExpenseCta: "Добавить расход",
@@ -216,7 +220,7 @@ export const ru: Dictionary = {
     about: "О приложении",
     aboutBody:
       "Финансовый учёт — быстрый, приватный офлайн-трекер расходов и бюджета. Все данные остаются на этом устройстве, пока вы сами их не экспортируете.",
-    version: "Версия 1.5.0",
+    version: "Версия 1.5.1",
   },
   update: {
     available: "Доступна новая версия",

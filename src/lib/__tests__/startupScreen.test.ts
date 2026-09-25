@@ -21,3 +21,19 @@ describe("hideStartupScreen", () => {
     expect(() => hideStartupScreen()).not.toThrow();
   });
 });
+
+describe("hideStartupScreen after a failed load", () => {
+  it("keeps the startup screen (with its retry) when index.html flagged a failed load", () => {
+    const el = document.createElement("div");
+    el.id = "startup";
+    document.body.appendChild(el);
+    (window as { __appLoadFailed?: boolean }).__appLoadFailed = true;
+    try {
+      hideStartupScreen();
+      expect(el.classList.contains("startup--hide")).toBe(false);
+    } finally {
+      delete (window as { __appLoadFailed?: boolean }).__appLoadFailed;
+      el.remove();
+    }
+  });
+});
