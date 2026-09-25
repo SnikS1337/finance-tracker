@@ -1,17 +1,16 @@
-import { useCallback, type MouseEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useSyncExternalStore, type MouseEvent } from "react";
+import { useLocation } from "react-router-dom";
 import { NAV_ITEMS } from "./navItems";
-import { prefersReducedMotion } from "../../lib/motion";
 import { scrollToTopSmooth } from "../../lib/scroll";
 
 /**
- * Tab switches with the View Transitions API: the page slides a little in the
- * direction of the tab order while the nav indicator glides to the new tab.
+ * Tab switching, tuned for feel (1.6):
  *
- * Not via NavLink's `viewTransition` prop: with HashRouter (declarative mode)
- * React Router 7.18 only calls `document.startViewTransition` in data routers,
- * so here it's done by hand. Feature-detected; without the API (or with reduced
- * motion) NavLink navigates normally and the tab changes instantly.
+ * - The tab lights up on touch-down (a "pending" tab), before the new page has
+ *   rendered, so a tap is acknowledged in the next frame.
+ * - The page switches immediately (NavLink navigation) with a short fade-in
+ *   that never blocks input. The earlier View Transitions version froze input
+ *   for ~400 ms and made the switch feel slow and "jelly" on Android.
  */
 
 /** Position of a path in the tab order (-1 if it isn't a tab). */
@@ -19,62 +18,61 @@ export function navIndex(pathname: string): number {
   return NAV_ITEMS.findIndex((item) => (item.to === "/" ? pathname === "/" : pathname.startsWith(item.to)));
 }
 
-/** Longest the transition waits for the new page to render before giving up on animating. */
-const MAX_WAIT_MS = 1_000;
+// ---- Pending tab (touched, not navigated yet) -------------------------------
 
-let settle: (() => void) | null = null;
-/** Id of the newest tab transition, so an older one finishing doesn't clean up after a newer one. */
-let latest = 0;
+/** If the navigation doesn't happen (finger slid off, click cancelled), drop the highlight. */
+const PENDING_TIMEOUT_MS = 700;
+
+let pending: number | null = null;
+let pendingTimer: number | undefined;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+
+function setPending(index: number | null) {
+  if (pending === index) return;
+  pending = index;
+  window.clearTimeout(pendingTimer);
+  if (index !== null) pendingTimer = window.setTimeout(() => setPending(null), PENDING_TIMEOUT_MS);
+  emit();
+}
+
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => listeners.delete(l);
+};
 
 /**
- * Called once the new route has rendered (AppShell's layout effect on
- * pathname): lets the pending transition capture the new page.
+ * The tab to show as active: the one just touched, else the current route's.
+ * Clears the touched one as soon as the route catches up.
  */
-export function settleTabTransition(): void {
-  settle?.();
-  settle = null;
-}
-
-function supportsViewTransitions(): boolean {
-  return typeof document !== "undefined" && typeof document.startViewTransition === "function";
-}
-
-/** onClick for a tab link. */
-export function useTabClick() {
+export function useShownTab(): number {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
+  const active = navIndex(pathname);
+  const touched = useSyncExternalStore(subscribe, () => pending, () => null);
+  useEffect(() => {
+    if (pending !== null && pending === active) setPending(null);
+  }, [active]);
+  return touched ?? active;
+}
 
+/** Handlers for a tab link: light up on touch, scroll to top when it's already open. */
+export function useTabHandlers() {
+  const { pathname } = useLocation();
   return useCallback(
-    (to: string) => (e: MouseEvent<HTMLAnchorElement>) => {
-      // Tapping the tab you're already on scrolls it back to the top, like native tab bars.
-      if (pathname === to) {
-        scrollToTopSmooth();
-        return;
-      }
-      const plainClick = e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
-      if (!plainClick || !supportsViewTransitions() || prefersReducedMotion()) return;
-
-      e.preventDefault();
-      const id = ++latest;
-      const root = document.documentElement;
-      root.dataset.navDirection = navIndex(to) > navIndex(pathname) ? "forward" : "back";
-      const transition = document.startViewTransition(
-        () =>
-          new Promise<void>((resolve) => {
-            settle = resolve;
-            window.setTimeout(resolve, MAX_WAIT_MS);
-            navigate(to);
-          })
-      );
-      // `ready` rejects when the animation is skipped (e.g. the page took too
-      // long); navigation has happened either way, so that's fine.
-      transition.ready.catch(() => {});
-      transition.finished
-        .finally(() => {
-          if (id === latest) delete root.dataset.navDirection;
-        })
-        .catch(() => {});
-    },
-    [pathname, navigate]
+    (to: string) => ({
+      onPointerDown: () => {
+        if (pathname !== to) setPending(navIndex(to));
+      },
+      onClick: (_e: MouseEvent<HTMLAnchorElement>) => {
+        // Tapping the tab you're already on scrolls it back to the top, like native tab bars.
+        if (pathname === to) scrollToTopSmooth();
+      },
+    }),
+    [pathname]
   );
+}
+
+/** Test-only. */
+export function resetPendingTabForTests() {
+  setPending(null);
 }

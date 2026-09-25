@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "../lib/motion";
 
-const DURATION_MS = 450;
-/** Ease-out close to `calm-out`: quick start, long gentle stop. */
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 4);
+const DURATION_MS = 250;
+/** Ease-out cubic: quick, without a long slow tail. */
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /**
  * A number that glides to its new value when it changes (e.g. after adding an

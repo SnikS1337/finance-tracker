@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAppData } from "../hooks/useAppData";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
@@ -16,7 +16,14 @@ import { t } from "../i18n";
  * The dashboard is a fixed "this month" overview. Choosing other periods lives
  * in Analytics, which has the full PeriodSelector.
  */
+/** Sections appear one after another only the first time the app opens, not on every tab switch. */
+let staggerPlayed = false;
+
 export default function Dashboard() {
+  const [stagger] = useState(() => !staggerPlayed);
+  useEffect(() => {
+    staggerPlayed = true;
+  }, []);
   const { transactions, categories, budgets } = useAppData();
   const { openAdd } = useTransactionSheetActions();
 
@@ -43,8 +50,8 @@ export default function Dashboard() {
   }
 
   return (
-    // `stagger`: sections appear one after another (index.css).
-    <div className="stagger space-y-5">
+    // `stagger`: sections appear one after another (index.css), first open only.
+    <div className={stagger ? "stagger space-y-5" : "space-y-5"}>
       <div>
         <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
         <p className="text-sm text-neutral-500 dark:text-neutral-400">{t.dashboard.periodCaption}</p>

@@ -35,66 +35,14 @@
 
 /* ---------- Motion ---------- */
 
-/* Dashboard sections appear one after another: each direct child sets a delay
-   that its cards (Card uses var(--stagger)) inherit. */
+/* Dashboard sections appear one after another — only the first time the app
+   opens (see Dashboard.tsx): each direct child sets a delay that its cards
+   (Card uses var(--stagger)) inherit. */
 @media (prefers-reduced-motion: no-preference) {
-  .stagger > :nth-child(2) { --stagger: 50ms; }
-  .stagger > :nth-child(3) { --stagger: 100ms; }
-  .stagger > :nth-child(4) { --stagger: 150ms; }
-  .stagger > :nth-child(5) { --stagger: 200ms; }
-  .stagger > :nth-child(n + 6) { --stagger: 250ms; }
+  .stagger > :nth-child(2) { --stagger: 30ms; }
+  .stagger > :nth-child(3) { --stagger: 60ms; }
+  .stagger > :nth-child(n + 4) { --stagger: 90ms; }
 }
-
-/* Tab switches (View Transitions API, see tabTransition.ts). The old page
-   fades out first, then the new one fades in with a small slide — they never
-   overlap, so there's no double image. Only the page content moves; the rest of the screen switches instantly and the nav
-   indicator glides on its own. Browsers without the API ignore all of this. */
-.page-transition { view-transition-name: page; }
-/* The nav bars are captured separately so they stay above the sliding page. */
-.app-nav--bottom { view-transition-name: nav-bar-bottom; }
-.app-nav--side { view-transition-name: nav-bar-side; }
-.nav-indicator--bottom { view-transition-name: nav-indicator-bottom; }
-.nav-indicator--side { view-transition-name: nav-indicator-side; }
-/* During the transition the indicator is moved by the transition itself. */
-html[data-nav-direction] .nav-indicator { transition: none; }
-
-::view-transition-old(root),
-::view-transition-new(root),
-::view-transition-group(page),
-::view-transition-group(nav-bar-bottom),
-::view-transition-group(nav-bar-side),
-::view-transition-old(nav-bar-bottom),
-::view-transition-new(nav-bar-bottom),
-::view-transition-old(nav-bar-side),
-::view-transition-new(nav-bar-side) {
-  animation: none;
-}
-/* The old nav snapshot would show under the new one; only the new one is needed. */
-::view-transition-old(nav-bar-bottom),
-::view-transition-old(nav-bar-side) {
-  display: none;
-}
-::view-transition-group(nav-indicator-bottom),
-::view-transition-group(nav-indicator-side) {
-  animation-duration: 280ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-}
-::view-transition-old(page) {
-  animation: page-out 100ms cubic-bezier(0.7, 0, 0.84, 0) both;
-}
-::view-transition-new(page) {
-  animation: page-in 240ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
-}
-html[data-nav-direction="back"]::view-transition-old(page) {
-  animation-name: page-out-back;
-}
-html[data-nav-direction="back"]::view-transition-new(page) {
-  animation-name: page-in-back;
-}
-@keyframes page-out { to { transform: translateX(-8px); opacity: 0; } }
-@keyframes page-in { from { transform: translateX(16px); opacity: 0; } }
-@keyframes page-out-back { to { transform: translateX(8px); opacity: 0; } }
-@keyframes page-in-back { from { transform: translateX(-16px); opacity: 0; } }
 
 /* Spending chart: bars grow up from the axis the first time it's shown. */
 @keyframes bars-in {

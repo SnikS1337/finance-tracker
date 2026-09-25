@@ -5,7 +5,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { ProgressBar } from "../ui/ProgressBar";
 import { AnimatedNumber } from "../ui/AnimatedNumber";
 import { BottomNav } from "../layout/BottomNav";
-import { navIndex, settleTabTransition } from "../layout/tabTransition";
+import { navIndex, resetPendingTabForTests } from "../layout/tabTransition";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -47,7 +47,7 @@ describe("budget progress bar", () => {
     expect(bar().style.transform).toBe("scaleX(0)");
     runFrames(16);
     expect(bar().style.transform).toBe("scaleX(0.5)");
-    expect(bar().className).toContain("duration-[600ms]");
+    expect(bar().className).toContain("duration-[400ms]");
   });
 
   it("is drawn in place when shown again, and glides on changes", () => {
@@ -61,7 +61,7 @@ describe("budget progress bar", () => {
     expect(bar().style.transform).toBe("scaleX(0.5)");
     act(() => root.render(<ProgressBar percentage={90} status="approaching" introKey="test:again" />));
     expect(bar().style.transform).toBe("scaleX(0.9)");
-    expect(bar().className).toContain("duration-[400ms]");
+    expect(bar().className).toContain("duration-[250ms]");
     expect(bar().className).toContain("bg-amber-500");
   });
 
@@ -118,33 +118,29 @@ describe("tab switches", () => {
     expect(["/", "/transactions", "/analytics", "/settings", "/nope"].map(navIndex)).toEqual([0, 1, 2, 3, -1]);
   });
 
-  it("navigates normally without the View Transitions API", () => {
+  it("navigates on tap, without any View Transition (it froze input for ~400 ms)", () => {
+    const start = vi.fn();
+    (document as { startViewTransition?: unknown }).startViewTransition = start;
     renderNav();
     click(link("Аналитика"));
     expect(where()).toBe("/analytics");
+    expect(start).not.toHaveBeenCalled();
   });
 
-  it("uses document.startViewTransition when available, with the direction of the tab order", async () => {
-    let finish!: () => void;
-    const start = vi.fn((update: () => Promise<void>) => {
-      const done = update();
-      return { ready: Promise.resolve(), updateCallbackDone: done, finished: new Promise<void>((r) => (finish = r)) };
+  it("lights the touched tab up on pointer-down, before the page has changed", () => {
+    renderNav("/");
+    const indicator = () => container.querySelector<HTMLElement>(".nav-indicator")!.style.transform;
+    expect(indicator()).toBe("translateX(0%)");
+    act(() => {
+      link("Настройки").dispatchEvent(new Event("pointerdown", { bubbles: true }));
     });
-    (document as { startViewTransition?: unknown }).startViewTransition = start;
-
-    renderNav("/settings");
-    click(link("Операции"));
-    expect(start).toHaveBeenCalledTimes(1);
-    expect(document.documentElement.dataset.navDirection).toBe("back");
-    expect(where()).toBe("/transactions");
-    settleTabTransition();
-
-    await act(async () => {
-      finish();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(document.documentElement.dataset.navDirection).toBeUndefined();
+    expect(where()).toBe("/"); // not navigated yet
+    expect(indicator()).toBe("translateX(400%)");
+    expect(link("Настройки").className).toContain("text-neutral-900");
+    click(link("Настройки"));
+    expect(where()).toBe("/settings");
+    expect(indicator()).toBe("translateX(400%)");
+    resetPendingTabForTests();
   });
 
   it("the indicator sits under the active tab (skipping the '+' column)", () => {
@@ -157,6 +153,6 @@ describe("tab switches", () => {
 describe("budget progress bar at 0%", () => {
   it("has no fill-in to wait for", () => {
     act(() => root.render(<ProgressBar percentage={0} status="normal" introKey="test:zero" />));
-    expect(bar().className).toContain("duration-[400ms]");
+    expect(bar().className).toContain("duration-[250ms]");
   });
 });

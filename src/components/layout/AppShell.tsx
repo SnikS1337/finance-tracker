@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
 import { UpdateBanner } from "./UpdateBanner";
-import { settleTabTransition } from "./tabTransition";
 import { TransactionFormSheet } from "../transactions/TransactionFormSheet";
 import { useTransactionSheet } from "../../hooks/useTransactionSheet";
 import { useAppData } from "../../hooks/useAppData";
@@ -59,20 +58,21 @@ export function AppShell() {
   // Transactions list dropped you into the middle of Settings.
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
-    // A tab transition in progress can now capture the new page.
-    settleTabTransition();
   }, [pathname]);
 
   return (
     <div className="min-h-screen md:pl-60">
       <Sidebar onAdd={() => openAdd()} />
-      {/* view-transition-name: page — the part that slides on tab switches (index.css). */}
-      <main className="page-transition mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
+      <main className="mx-auto max-w-2xl px-4 pb-28 pt-6 md:max-w-3xl md:px-8 md:pb-10">
         {/* Keyed by route: an error on one page (e.g. a chunk that failed to load
             offline) must not stick around after navigating to another page. */}
         <ChunkErrorBoundary key={pathname}>
           <Suspense fallback={<PageFallback />}>
-            <Outlet />
+            {/* A short fade-in when the page changes (remounts with the route key);
+                pure CSS, so taps are never blocked while it plays. */}
+            <div className="animate-page-in">
+              <Outlet />
+            </div>
           </Suspense>
         </ChunkErrorBoundary>
       </main>
