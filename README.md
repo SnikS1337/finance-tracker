@@ -198,6 +198,7 @@ npm run build && npx vite preview --port 4174 &
 node scripts/e2e-calendar.mjs   # полночь при открытом приложении, 31.12 → 1.01, 29.02, регулярные на 31-е
 node scripts/e2e-network.mjs    # офлайн, раздел не в кеше, медленный 3G, обрыв при загрузке
 node scripts/e2e-data.mjs       # две вкладки, CSV, импорт битых копий, двойной тап, длинные названия
+node scripts/e2e-budgets.mjs    # бюджеты на месяц и неделю, уведомление 80%, сброс в понедельник
 node scripts/perf.mjs 5000      # скорость на 5 000 операций при процессоре, замедленном в 4 раза
 node scripts/e2e-update.mjs     # обновление PWA (правит dist/ — после него пересоберите)
 ```
