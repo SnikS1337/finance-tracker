@@ -59,13 +59,13 @@ describe("average and median daily expense", () => {
     expect(calculateAverageDailyExpense(transactions, range, afterRange)).toBe(100);
   });
 
-  it("computes median across all calendar days including zero-spend days", () => {
+  it("computes the median over days that had spending (quiet days don't pull it to 0)", () => {
     const transactions = [
       tx({ date: "2026-09-01", amount: 100 }),
       tx({ date: "2026-09-02", amount: 200 }),
+      tx({ date: "2026-09-03", amount: 900 }),
     ];
-    // 30 days total, 28 are zero -> median is 0
-    expect(calculateMedianDailyExpense(transactions, range, afterRange)).toBe(0);
+    expect(calculateMedianDailyExpense(transactions, range, afterRange)).toBe(200);
   });
 
   it("counts only days that actually had spending", () => {

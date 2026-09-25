@@ -104,6 +104,7 @@ export function summarize(transactions: Transaction[], range: DateRange, now: Da
   const todayKey = toDateKey(now);
   const elapsedUntil = lastExpenseKey > todayKey ? lastExpenseKey : todayKey;
   const elapsedValues: number[] = [];
+  const spendingValues: number[] = [];
   let spendingDays = 0;
   let highest: DaySpend | null = null;
   let lowest: DaySpend | null = null;
@@ -111,6 +112,7 @@ export function summarize(transactions: Transaction[], range: DateRange, now: Da
     if (date <= elapsedUntil) elapsedValues.push(total);
     if (total <= 0) continue;
     spendingDays++;
+    spendingValues.push(total);
     if (!highest || total > highest.total) highest = { date, total };
     if (!lowest || total < lowest.total) lowest = { date, total };
   }
@@ -124,7 +126,10 @@ export function summarize(transactions: Transaction[], range: DateRange, now: Da
     dailyExpenses,
     elapsedDays,
     averagePerDay: elapsedDays > 0 ? expenses / elapsedDays : 0,
-    medianPerDay: median(elapsedValues.sort((a, b) => a - b)),
+    // Median of the days that had spending: "a typical spending day". Over all
+    // calendar days it was 0 whenever fewer than half the days had expenses,
+    // which read as "not calculated".
+    medianPerDay: median(spendingValues.sort((a, b) => a - b)),
     spendingDays,
     expenseByCategory: toCategoryTotals(expenseByCategory, expenses),
     incomeByCategory: toCategoryTotals(incomeByCategory, income),
