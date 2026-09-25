@@ -6,7 +6,8 @@
 //   npm run build && npx vite preview --port 4174 &
 //   node scripts/nav-feel.mjs [cpuSlowdown=4]
 //
-// 1.6 targets: tab lit ≤ 20 ms, page visible ≈ 20–200 ms, settled ≤ 300 ms, 0 lost taps.
+// 1.6 targets: tab lit ≤ 20 ms, page visible ≈ 20–200 ms, settled ≤ 450 ms (the
+// slide-in is 240 ms and never blocks input), 0 lost taps.
 import { chromium } from 'playwright';
 const BASE = process.env.BASE || 'http://127.0.0.1:4174/finance-tracker/';
 const CPU = Number(process.argv[2] || 4);
@@ -44,7 +45,7 @@ for (const [tab, h] of [['Операции','Операции'],['Аналити
   const m = await p.evaluate(() => window.__m);
   const r = (x) => (x ? Math.round(x - m.t0) : '—');
   const shown = m.vtSwap ? r(m.vtSwap) : r(m.page);
-  const settled = m.vtEnd ? r(m.vtEnd) : Math.max(r(m.page) + 120, (m.active ? r(m.active) : r(m.page)) + 150);
+  const settled = m.vtEnd ? r(m.vtEnd) : Math.max(r(m.page) + 240, (m.active ? r(m.active) : r(m.page)) + 180);
   const lit = m.vtSwap ? shown : r(m.active);
   rows.push(`${('→ ' + tab).padEnd(14)} вкладка подсветилась ${String(lit).padStart(4)} | страница видна ${String(shown).padStart(4)} | всё успокоилось ${String(settled).padStart(4)} мс`);
 }

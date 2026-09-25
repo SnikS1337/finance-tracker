@@ -44,7 +44,11 @@ const flat = (s) => s.replace(/\s/g, '');
     await page.waitForTimeout(300);
     t = await text(page);
     ok('после полуночи без перезагрузки: «Сегодня трат пока нет»', t.includes('Сегодня трат пока нет'), t.split('\n').slice(0, 4).join(' / '));
-    ok('после полуночи: Обзор переключился на октябрь (сентябрьских сумм нет)', !flat(t).includes('200000₫'));
+    // 1.6: on the first days of a month the Overview opens with last month's
+    // results ("Итоги сентября") — the month's own summary must not show them.
+    const review = await page.locator('[data-testid="monthly-review"]').innerText().catch(() => '');
+    ok('после полуночи: карточка «Итоги сентября» с 200 000', review.includes('Итоги сентября') && flat(review).includes('200000₫'), flat(review).slice(0, 60));
+    ok('после полуночи: сводка Обзора переключилась на октябрь (сентябрьских сумм нет)', !flat(t.replace(review, '')).includes('200000₫'));
     await page.getByRole('link', { name: 'Операции' }).click(); await page.waitForTimeout(500);
     await page.getByRole('button', { name: 'Прошлый месяц', exact: true }).click(); await page.waitForTimeout(300);
     t = await text(page);
