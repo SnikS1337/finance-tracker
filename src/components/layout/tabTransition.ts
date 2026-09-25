@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useSyncExternalStore, type MouseEvent } from "react";
-import { useLocation } from "react-router-dom";
+import { useCallback, useEffect, useSyncExternalStore, type MouseEvent, type PointerEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { NAV_ITEMS } from "./navItems";
 import { scrollToTopSmooth } from "../../lib/scroll";
 
@@ -55,20 +55,64 @@ export function useShownTab(): number {
   return touched ?? active;
 }
 
-/** Handlers for a tab link: light up on touch, scroll to top when it's already open. */
+/** A press that moved further than this is a drag, not a tap. */
+const TAP_SLOP_PX = 10;
+
+/** The press in progress on a tab link (only one finger/mouse at a time here). */
+let press: { to: string; x: number; y: number } | null = null;
+/** Set when pointer-up already navigated, so the click that may follow doesn't repeat it. */
+let handledByPointerUp = false;
+
+/**
+ * Handlers for a tab link: light up on touch, navigate on release, scroll to
+ * top when the tab is already open.
+ *
+ * Navigation happens on pointer-up, not on the click: while the page is still
+ * scrolling from a flick, mobile browsers use the tap to stop the scroll and
+ * don't fire a click at all — the tab lit up, nothing happened, and it went
+ * back after a moment. Pointer-up still arrives in that case. A real click
+ * (keyboard, or a browser that sends no pointer events) keeps working as before.
+ */
 export function useTabHandlers() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   return useCallback(
     (to: string) => ({
-      onPointerDown: () => {
+      onPointerDown: (e: PointerEvent<HTMLAnchorElement>) => {
+        if (e.button !== 0) return;
+        press = { to, x: e.clientX, y: e.clientY };
+        handledByPointerUp = false;
         if (pathname !== to) setPending(navIndex(to));
       },
-      onClick: (_e: MouseEvent<HTMLAnchorElement>) => {
+      onPointerUp: (e: PointerEvent<HTMLAnchorElement>) => {
+        const p = press;
+        press = null;
+        if (!p || p.to !== to || e.button !== 0) return;
+        if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > TAP_SLOP_PX) return setPending(null);
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; // new tab/window: leave it to the link
+        handledByPointerUp = true;
+        // The click that normally follows comes within a few ms; if the browser
+        // swallowed it (the flick case), don't let the flag eat a later click.
+        window.setTimeout(() => (handledByPointerUp = false), 400);
+        if (pathname === to) scrollToTopSmooth();
+        else navigate(to);
+      },
+      onPointerCancel: () => {
+        press = null;
+        setPending(null);
+      },
+      onClick: (e: MouseEvent<HTMLAnchorElement>) => {
+        if (handledByPointerUp) {
+          handledByPointerUp = false;
+          e.preventDefault();
+          return;
+        }
+        // Keyboard / no pointer events: the link navigates by itself.
         // Tapping the tab you're already on scrolls it back to the top, like native tab bars.
         if (pathname === to) scrollToTopSmooth();
       },
     }),
-    [pathname]
+    [pathname, navigate]
   );
 }
 

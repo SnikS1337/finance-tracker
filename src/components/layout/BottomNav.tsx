@@ -53,15 +53,13 @@ function NavItem({
   label,
   icon: Icon,
   shown,
-  onPointerDown,
-  onClick,
+  ...handlers
 }: NavItemConfig & { shown: boolean } & ReturnType<ReturnType<typeof useTabHandlers>>) {
   return (
     <NavLink
       to={to}
       end={to === "/"}
-      onPointerDown={onPointerDown}
-      onClick={onClick}
+      {...handlers}
       aria-label={label}
       className={cn(
         // Colour follows the touched tab at once (no fade); the icon dips on press.

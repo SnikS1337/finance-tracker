@@ -132,7 +132,7 @@ describe("tab switches", () => {
     const indicator = () => container.querySelector<HTMLElement>(".nav-indicator")!.style.transform;
     expect(indicator()).toBe("translateX(0%)");
     act(() => {
-      link("Настройки").dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      link("Настройки").dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
     });
     expect(where()).toBe("/"); // not navigated yet
     expect(indicator()).toBe("translateX(400%)");
@@ -140,6 +140,41 @@ describe("tab switches", () => {
     click(link("Настройки"));
     expect(where()).toBe("/settings");
     expect(indicator()).toBe("translateX(400%)");
+    resetPendingTabForTests();
+  });
+
+  it("a tap without a click (the page was still scrolling from a flick) still switches the tab", () => {
+    renderNav("/settings");
+    const target = link("Обзор");
+    const pointer = (type: string) => {
+      const e = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: 10, clientY: 10 });
+      act(() => {
+        target.dispatchEvent(e);
+      });
+      return e;
+    };
+    pointer("pointerdown");
+    pointer("pointerup"); // the browser used the tap to stop scrolling: no click follows
+    expect(where()).toBe("/");
+    // …and when a click does follow a handled tap, it doesn't navigate a second time.
+    renderNav("/settings");
+    pointer("pointerdown");
+    pointer("pointerup");
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    act(() => {
+      link("Обзор").dispatchEvent(click);
+    });
+    expect(click.defaultPrevented).toBe(true);
+    resetPendingTabForTests();
+  });
+
+  it("a press that turns into a drag doesn't navigate", () => {
+    renderNav("/settings");
+    act(() => {
+      link("Обзор").dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+      link("Обзор").dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 60, clientY: 10 }));
+    });
+    expect(where()).toBe("/settings");
     resetPendingTabForTests();
   });
 
