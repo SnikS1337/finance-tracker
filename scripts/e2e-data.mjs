@@ -10,7 +10,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4174/finance-tracker/';
 const results = []; const ok = (n, c, x = '') => results.push(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? '  — ' + x : ''}`);
 const today = new Date().toISOString().slice(0, 10);
 const tx = (id, amount, extra = {}) => ({ id, type: 'expense', amount, categoryId: 'exp-food', date: today, createdAt: new Date().toISOString(), updatedAt: '', ...extra });
-function seedScript(data) {
+function seedScript() {
   return ([d]) => { if (localStorage.getItem('seeded')) return; localStorage.setItem('pft:schemaVersion','1'); localStorage.setItem('pft:settings', JSON.stringify({theme:'light',onboarded:true,isDemoData:false})); for (const [k,v] of Object.entries(d)) localStorage.setItem(k, JSON.stringify(v)); localStorage.setItem('seeded','1'); };
 }
 (async () => {
