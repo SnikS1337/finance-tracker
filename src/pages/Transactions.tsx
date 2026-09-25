@@ -27,6 +27,11 @@ export default function Transactions() {
   const [query, setQuery] = useState("");
   // Typing stays instant; the (possibly long) list catches up right after.
   const deferredQuery = useDeferredValue(query);
+  const searching = deferredQuery.trim() !== "";
+  // A search looks through all time by default (you rarely remember the month
+  // of the thing you're looking for); it can be narrowed back to the period.
+  const [searchAllTime, setSearchAllTime] = useState(true);
+  const ignorePeriod = searching && searchAllTime;
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   // A link can point at a category that no longer exists (deleted) — then the
@@ -43,7 +48,7 @@ export default function Transactions() {
 
   const filtered = useMemo(() => {
     let list = transactions.filter((tx) => {
-      if (!isDateKeyInRange(tx.date, period.range)) return false;
+      if (!ignorePeriod && !isDateKeyInRange(tx.date, period.range)) return false;
       if (typeFilter !== "all" && tx.type !== typeFilter) return false;
       if (categoryFilter !== "all" && tx.categoryId !== categoryFilter) return false;
       return matchesSearch(tx, categoryById.get(tx.categoryId)?.name ?? "", deferredQuery);
@@ -62,8 +67,15 @@ export default function Transactions() {
       }
     });
     return list;
-  }, [transactions, period.range, typeFilter, categoryFilter, deferredQuery, sort, categoryById]);
-  const listKey = [period.preset, period.customStart, period.customEnd, typeFilter, categoryFilter, deferredQuery, sort].join("|");
+  }, [transactions, period.range, ignorePeriod, typeFilter, categoryFilter, deferredQuery, sort, categoryById]);
+  const listKey = [
+    ignorePeriod ? "all-time" : `${period.preset}:${period.customStart}:${period.customEnd}`,
+    typeFilter,
+    categoryFilter,
+    deferredQuery,
+    sort,
+  ].join("|");
+  const periodName = t.transactionsPage.periodName(period.preset);
 
   return (
     <div className="space-y-5">
@@ -83,7 +95,11 @@ export default function Transactions() {
         <Search size={16} className="shrink-0 text-neutral-400" />
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            // A new search starts from "all time" again.
+            if (e.target.value.trim() === "") setSearchAllTime(true);
+          }}
           placeholder={t.transactionsPage.searchPlaceholder}
           className="w-full bg-transparent text-sm outline-none placeholder:text-neutral-400"
         />
@@ -135,6 +151,19 @@ export default function Transactions() {
           <option value="smallest">{t.transactionsPage.sortSmallest}</option>
         </select>
       </div>
+
+      {searching && (
+        <p className="-mt-2 flex flex-wrap items-baseline gap-x-2 text-sm text-neutral-500 dark:text-neutral-400" aria-live="polite">
+          <span>{ignorePeriod ? t.transactionsPage.foundAllTime(filtered.length) : t.transactionsPage.foundInPeriod(filtered.length, periodName)}</span>
+          <button
+            type="button"
+            onClick={() => setSearchAllTime(!searchAllTime)}
+            className="font-medium text-neutral-800 underline decoration-neutral-300 underline-offset-2 dark:text-neutral-100 dark:decoration-neutral-600"
+          >
+            {ignorePeriod ? t.transactionsPage.onlyInPeriod(periodName) : t.transactionsPage.searchAllTime}
+          </button>
+        </p>
+      )}
 
       {filtered.length === 0 ? (
         <EmptyState

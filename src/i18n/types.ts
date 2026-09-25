@@ -1,3 +1,4 @@
+import type { PeriodPreset } from "../lib/date-utils";
 /**
  * Shape of a single locale's strings. Adding a new language later means
  * creating another file that implements this interface (e.g. `en.ts`) and
@@ -102,6 +103,12 @@ export interface Dictionary {
     emptyDescriptionNoMatch: string;
     deleteAction: string;
     showMore: (remaining: number) => string;
+    /** The selected period as it reads after "за": "этот месяц", "выбранный период". */
+    periodName: (preset: PeriodPreset) => string;
+    foundAllTime: (count: number) => string;
+    foundInPeriod: (count: number, periodName: string) => string;
+    onlyInPeriod: (periodName: string) => string;
+    searchAllTime: string;
     recurringBadge: string;
     deleteConfirmTitle: string;
     deleteConfirmDescription: string;
