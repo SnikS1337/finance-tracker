@@ -68,7 +68,8 @@ export default function Analytics() {
 
   if (transactions.length === 0) {
     return (
-      <div className="pt-10">
+      <div className="space-y-5">
+        <h1 className="text-xl font-semibold">{t.analytics.title}</h1>
         <EmptyState title={t.analytics.emptyTitle} description={t.analytics.emptyDescription} />
       </div>
     );

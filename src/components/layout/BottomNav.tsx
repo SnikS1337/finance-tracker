@@ -17,10 +17,11 @@ export function BottomNav({ onAdd }: { onAdd: () => void }) {
       {/* Five equal columns (the middle one reserved for "+") so every tab sits at
           a fixed, symmetric position. `justify-around` spaced items by their label
           widths, so "Операции" ended up farther from "+" than "Аналитика". */}
-      <div className="relative mx-auto grid max-w-lg grid-cols-5 items-center px-2">
+      {/* Narrow phones (320 px): less side padding so "Аналитика" / "Настройки" fit whole. */}
+      <div className="relative mx-auto grid max-w-lg grid-cols-5 items-center px-1 min-[360px]:px-2">
         {/* Active-tab marker: glides between tabs (transform only). */}
         {active >= 0 && (
-          <div aria-hidden className="pointer-events-none absolute inset-x-2 top-0">
+          <div aria-hidden className="pointer-events-none absolute inset-x-1 top-0 min-[360px]:inset-x-2">
             <div
               className="nav-indicator flex w-1/5 justify-center transition-transform duration-150 ease-out"
               style={{ transform: `translateX(${TAB_COLUMN[active] * 100}%)` }}
@@ -63,7 +64,7 @@ function NavItem({
       aria-label={label}
       className={cn(
         // Colour follows the touched tab at once (no fade); the icon dips on press.
-        "group/tab flex min-w-0 touch-manipulation flex-col items-center gap-0.5 px-1 py-2 text-[11px] font-medium",
+        "group/tab flex min-w-0 touch-manipulation flex-col items-center gap-0.5 px-0 py-2 text-[11px] font-medium max-[359px]:tracking-tight min-[360px]:px-1",
         shown ? "text-neutral-900 dark:text-white" : "text-neutral-400 dark:text-neutral-500"
       )}
     >

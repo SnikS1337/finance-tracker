@@ -77,6 +77,21 @@ export default function Transactions() {
   ].join("|");
   const periodName = t.transactionsPage.periodName(period.preset);
 
+  // Nothing recorded yet: no period, search or filters over an empty list —
+  // just the title and the way to add the first operation.
+  if (transactions.length === 0) {
+    return (
+      <div className="space-y-5">
+        <h1 className="text-xl font-semibold">{t.transactionsPage.title}</h1>
+        <EmptyState
+          title={t.transactionsPage.emptyTitleNoData}
+          description={t.transactionsPage.emptyDescriptionNoData}
+          action={<Button onClick={() => openAdd()}>{t.dashboard.addTransactionCta}</Button>}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -176,19 +191,7 @@ export default function Transactions() {
       )}
 
       {filtered.length === 0 ? (
-        <EmptyState
-          title={transactions.length === 0 ? t.transactionsPage.emptyTitleNoData : t.transactionsPage.emptyTitleNoMatch}
-          description={
-            transactions.length === 0
-              ? t.transactionsPage.emptyDescriptionNoData
-              : t.transactionsPage.emptyDescriptionNoMatch
-          }
-          action={
-            transactions.length === 0 ? (
-              <Button onClick={() => openAdd()}>{t.dashboard.addTransactionCta}</Button>
-            ) : undefined
-          }
-        />
+        <EmptyState title={t.transactionsPage.emptyTitleNoMatch} description={t.transactionsPage.emptyDescriptionNoMatch} />
       ) : (
         <TransactionList
           transactions={filtered}

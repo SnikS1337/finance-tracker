@@ -44,7 +44,9 @@ export default function Dashboard() {
 
   if (transactions.length === 0) {
     return (
-      <div className="pt-10">
+      // Same page title as with data, so every tab reads the same way.
+      <div className="space-y-5">
+        <h1 className="text-xl font-semibold">{t.dashboard.title}</h1>
         <EmptyState
           title={t.dashboard.emptyTitle}
           description={t.dashboard.emptyDescription}

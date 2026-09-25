@@ -51,12 +51,12 @@ export function CategoryDonut({ title, totals, categories, onSelectCategory, emp
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="w-full min-w-0 flex-1 space-y-1.5">
+          <div className="w-full min-w-0 flex-1">
             {data.map((d) => (
               <button
                 key={d.categoryId}
                 onClick={() => onSelectCategory?.(d.categoryId)}
-                className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
+                className="flex min-h-10 w-full items-center gap-2 rounded-lg px-1.5 py-2 text-left text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60"
               >
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: d.color }} />
                 <span className="flex-1 truncate">{d.name}</span>

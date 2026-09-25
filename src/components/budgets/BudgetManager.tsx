@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useAppData } from "../../hooks/useAppData";
 import { useToast } from "../../hooks/useToast";
 import { useToday } from "../../hooks/useToday";
-import { Button } from "../ui/Button";
+import { ChevronDown } from "lucide-react";
+import { cn } from "../../lib/cn";
 import { BudgetCard } from "./BudgetCard";
 import { BudgetFormSheet } from "./BudgetFormSheet";
 import { BUDGET_PERIODS, budgetPeriod, budgetProgress, byPeriod } from "../../lib/budgets";
@@ -11,6 +12,10 @@ import type { Budget, BudgetPeriod } from "../../types";
 import { t } from "../../i18n";
 
 const SET_LABEL: Record<BudgetPeriod, string> = { month: t.budgets.setMonthlyBudget, week: t.budgets.setWeeklyBudget };
+
+/** "+ Бюджет на месяц" / "+ Добавить бюджет по категории": one look, 44px tall. */
+const ADD_ROW =
+  "flex min-h-11 w-full items-center justify-center rounded-xl border border-dashed border-neutral-300 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800/60";
 
 /** What the form is open for: an existing budget, or a new one for a scope. */
 type Editing = { budget: Budget | null; categoryId?: string; period: BudgetPeriod };
@@ -59,11 +64,11 @@ export function BudgetManager() {
       ))}
 
       {overallMissing.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className={cn("grid gap-2", overallMissing.length > 1 && "grid-cols-2")}>
           {overallMissing.map((p) => (
-            <Button key={p} variant="secondary" size="sm" onClick={() => openNew(undefined, p)}>
+            <button key={p} type="button" onClick={() => openNew(undefined, p)} className={ADD_ROW}>
               + {SET_LABEL[p]}
-            </Button>
+            </button>
           ))}
         </div>
       )}
@@ -79,16 +84,21 @@ export function BudgetManager() {
       ))}
 
       {categoriesWithFreePeriod.length > 0 && (
-        <details className="rounded-xl border border-dashed border-neutral-200 p-3 text-sm dark:border-neutral-800">
-          <summary className="cursor-pointer font-medium text-neutral-600 dark:text-neutral-300">
-            {t.budgets.addCategoryBudget}
+        <details className="group/add">
+          {/* Same look as the buttons above; the default ▸ marker is hidden (it
+              doubled the "+"), a chevron shows open/closed instead. */}
+          <summary className={cn(ADD_ROW, "cursor-pointer list-none justify-between px-3 [&::-webkit-details-marker]:hidden")}>
+            <span>{t.budgets.addCategoryBudget}</span>
+            <ChevronDown size={16} aria-hidden="true" className="shrink-0 transition-transform duration-150 group-open/add:rotate-180" />
           </summary>
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-2">
             {categoriesWithFreePeriod.map((c) => (
               <button
                 key={c.id}
+                type="button"
                 onClick={() => openNew(c.id)}
-                className="rounded-full border border-neutral-200 px-3 py-1 text-xs dark:border-neutral-800"
+                // 36px chip, 44px touch area (the invisible ::after reaches into the 8px gaps).
+                className="relative min-h-9 rounded-full border border-neutral-200 px-3 text-sm after:absolute after:-inset-y-1 after:inset-x-0 after:content-[''] dark:border-neutral-800"
               >
                 {c.icon} {c.name}
               </button>

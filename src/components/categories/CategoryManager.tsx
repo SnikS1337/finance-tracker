@@ -35,7 +35,8 @@ function CategoryRow({
         <DropdownMenu.Trigger asChild>
           <button
             aria-label={t.categories.optionsFor(category.name)}
-            className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            // 28px icon button, 44px touch area (the invisible ::after).
+            className="relative rounded-full p-1.5 text-neutral-400 after:absolute after:-inset-2 after:content-[''] hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <MoreVertical size={16} />
           </button>

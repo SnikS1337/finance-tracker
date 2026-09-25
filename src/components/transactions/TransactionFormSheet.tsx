@@ -340,7 +340,15 @@ export function TransactionFormSheet({
 
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-        <div className="flex gap-2 pt-1">
+        {/* The submit row stays at the bottom of the sheet while the form scrolls:
+            with the 12-category grid it was below the fold even on 375×667. The
+            fade above it shows there's more under it. */}
+        <div
+          className={cn(
+            "sticky bottom-0 z-10 -mx-5 flex gap-2 bg-white px-5 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-2 dark:bg-surface-dark-subtle",
+            "before:pointer-events-none before:absolute before:inset-x-0 before:-top-4 before:h-4 before:bg-gradient-to-t before:from-white before:to-transparent dark:before:from-surface-dark-subtle"
+          )}
+        >
           {isEditing && onDelete && transaction && (
             <Button
               type="button"
