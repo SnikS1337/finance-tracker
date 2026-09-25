@@ -49,7 +49,7 @@ export function playPageExit(dir: 1 | -1): void {
   if (variant !== "slide" && variant !== "scale") return;
   const page = document.querySelector<HTMLElement>("main .page-enter");
   if (!canAnimate(page)) return;
-  const to = variant === "slide" ? `translate3d(${-dir * 12}px, 0, 0)` : "scale(0.99)";
+  const to = variant === "slide" ? `translate3d(${-dir * 8}px, 0, 0)` : "scale(0.99)";
   const exit = page.animate([{ opacity: 1, transform: "none" }, { opacity: 0.5, transform: to }], {
     duration: 140,
     easing: "cubic-bezier(0.4, 0, 1, 1)",

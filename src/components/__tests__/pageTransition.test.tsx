@@ -71,9 +71,12 @@ describe("page entrance", () => {
     await act(async () => root.render(<App />));
     for (let i = 0; i < 30 && !container.querySelector("main .page-enter h1"); i++) await settle();
     expect(dir()).toBe("0"); // first open: nowhere to come from
+    const switched = () => container.querySelector("main .page-enter")!.classList.contains("page-enter--switch");
+    expect(switched()).toBe(false); // first open keeps the cards' own entrance
 
     await go("/settings");
     expect(dir()).toBe("1"); // Overview → Settings: from the right
+    expect(switched()).toBe(true); // a tab switch moves the page as one piece
     await go("/transactions");
     expect(dir()).toBe("-1"); // Settings → Operations: from the left
     await go("/analytics");
@@ -118,7 +121,7 @@ describe("page entrance", () => {
       }
       const call = calls.find((c) => c.el === page);
       expect(call).toBeDefined();
-      expect(call!.keyframes[1]).toMatchObject({ opacity: 0.5, transform: "translate3d(-12px, 0, 0)" }); // going right → drifts left
+      expect(call!.keyframes[1]).toMatchObject({ opacity: 0.5, transform: "translate3d(-8px, 0, 0)" }); // going right → drifts left
       await settle();
       expect(window.location.hash).toBe("#/settings");
     } finally {
