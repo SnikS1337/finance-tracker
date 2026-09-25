@@ -3,6 +3,8 @@ import { useAppData } from "../hooks/useAppData";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
 import { BudgetOverview } from "../components/dashboard/BudgetOverview";
+import { MonthlyReviewCard } from "../components/dashboard/MonthlyReviewCard";
+import { monthlyReview } from "../lib/monthlyReview";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
@@ -35,6 +37,9 @@ export default function Dashboard() {
 
   const summary = useMemo(() => summarize(transactions, range), [transactions, range]);
 
+  // "Итоги августа" on the first days of the month.
+  const review = useMemo(() => monthlyReview(transactions, now), [transactions, now]);
+
   const spentToday = summary.dailyExpenses.get(today) ?? 0;
 
   if (transactions.length === 0) {
@@ -59,6 +64,8 @@ export default function Dashboard() {
           {spentToday > 0 ? t.dashboard.todaySpent(formatCurrency(spentToday)) : t.dashboard.todayNothingSpent}
         </p>
       </div>
+
+      {review && <MonthlyReviewCard key={review.monthKey} review={review} categories={categories} />}
 
       <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
 

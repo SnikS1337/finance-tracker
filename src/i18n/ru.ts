@@ -1,5 +1,8 @@
 import type { Dictionary } from "./types";
 
+const MONTHS_GENITIVE = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const MONTHS_PREPOSITIONAL = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре", "ноябре", "декабре"];
+
 export const ru: Dictionary = {
   app: {
     loadingSection: "Загружаем раздел…",
@@ -62,6 +65,17 @@ export const ru: Dictionary = {
     income: "Доходы",
     expenses: "Расходы",
     balance: "Баланс",
+  },
+  monthlyReview: {
+    title: (month) => `Итоги ${MONTHS_GENITIVE[month]}`,
+    hide: "Скрыть до следующего месяца",
+    topCategory: (name, percent) => `Больше всего ушло на ${name}: ${percent}% расходов`,
+    change: (percent, month) => {
+      const inMonth = MONTHS_PREPOSITIONAL[month];
+      if (Math.abs(percent) < 1) return `Расходы почти как в ${inMonth}`;
+      return `Расходы на ${Math.abs(percent)}% ${percent < 0 ? "меньше" : "больше"}, чем в ${inMonth}`;
+    },
+    open: "Подробнее в Аналитике",
   },
   quickStats: {
     averagePerDay: "В среднем в день",

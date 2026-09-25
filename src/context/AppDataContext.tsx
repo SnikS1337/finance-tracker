@@ -113,7 +113,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     const onStorage = (e: StorageEvent) => {
       const relevant =
         e.key === null || // localStorage.clear() in the other tab
-        (e.key.startsWith("pft:") && e.key !== "pft:__test__" && !e.key.startsWith("pft:exchangeRate"));
+        (e.key.startsWith("pft:") && e.key !== "pft:__test__" && !e.key.startsWith("pft:exchangeRate") &&
+          e.key !== "pft:monthlyReviewDismissed");
       if (relevant) refresh();
     };
     window.addEventListener("storage", onStorage);

@@ -69,6 +69,15 @@ export interface Dictionary {
     expenses: string;
     balance: string;
   };
+  monthlyReview: {
+    /** "Итоги сентября" — month 0–11. */
+    title: (month: number) => string;
+    hide: string;
+    topCategory: (name: string, percent: number) => string;
+    /** Expenses vs the month before; `month` 0–11. */
+    change: (percent: number, month: number) => string;
+    open: string;
+  };
   quickStats: {
     averagePerDay: string;
     medianPerDay: string;
