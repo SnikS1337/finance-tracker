@@ -2,6 +2,7 @@ import { useCallback, useEffect, useSyncExternalStore, type MouseEvent, type Poi
 import { useLocation, useNavigate } from "react-router-dom";
 import { NAV_ITEMS } from "./navItems";
 import { scrollToTopSmooth } from "../../lib/scroll";
+import { playPageExit } from "../../lib/pageTransition";
 
 /**
  * Tab switching, tuned for feel (1.6):
@@ -94,8 +95,9 @@ export function useTabHandlers() {
         // The click that normally follows comes within a few ms; if the browser
         // swallowed it (the flick case), don't let the flag eat a later click.
         window.setTimeout(() => (handledByPointerUp = false), 400);
-        if (pathname === to) scrollToTopSmooth();
-        else navigate(to);
+        if (pathname === to) return scrollToTopSmooth();
+        playPageExit(navIndex(to) > navIndex(pathname) ? 1 : -1);
+        navigate(to);
       },
       onPointerCancel: () => {
         press = null;

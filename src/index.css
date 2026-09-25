@@ -45,30 +45,37 @@
 }
 
 /* Page entrance on tab switch — prototype variants (1.6 step 7), chosen by
-   <html data-page-transition> (lib/pageTransition.ts). Short, decelerating,
-   no overshoot; never blocks input. The transform variants use `backwards`
-   fill so no transform stays on the page afterwards (it would become the
-   containing block for anything position: fixed inside it). The bottom-nav
-   indicator uses the same duration and curve, so tab and page move as one. */
+   <html data-page-transition> (lib/pageTransition.ts). The old page starts
+   leaving on tap (playPageExit, JS) and the new one continues the movement:
+   it comes in from the side of the tab you went to (or grows in slightly),
+   from 40% opacity — never from blank. The curve starts gently so the
+   movement is actually seen instead of happening in the first frame.
+   Never blocks input. `backwards` fill leaves no transform on the page
+   afterwards (it would become the containing block for position: fixed).
+   Tuning: --page-shift (distance) and --page-enter-ms (duration). */
+:root {
+  --page-shift: 24px;
+  --page-enter-ms: 240ms;
+}
 @keyframes page-fade-in {
   from { opacity: 0.35; }
 }
 @keyframes page-slide-in {
-  from { opacity: 0; transform: translate3d(calc(var(--page-dir, 0) * 14px), 0, 0); }
+  from { opacity: 0.4; transform: translate3d(calc(var(--page-dir, 0) * var(--page-shift)), 0, 0); }
 }
 @keyframes page-scale-in {
-  from { opacity: 0; transform: scale(0.985); }
+  from { opacity: 0.4; transform: scale(0.97); }
 }
 .page-enter {
   animation: page-fade-in 120ms ease-out both;
 }
 @media (prefers-reduced-motion: no-preference) {
   :root[data-page-transition="slide"] .page-enter {
-    animation: page-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation: page-slide-in var(--page-enter-ms) cubic-bezier(0.2, 0, 0, 1) backwards;
   }
   :root[data-page-transition="scale"] .page-enter {
     transform-origin: 50% 0;
-    animation: page-scale-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation: page-scale-in var(--page-enter-ms) cubic-bezier(0.2, 0, 0, 1) backwards;
   }
   :root[data-page-transition="slide"] .nav-indicator,
   :root[data-page-transition="scale"] .nav-indicator {

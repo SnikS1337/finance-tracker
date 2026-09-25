@@ -96,4 +96,33 @@ describe("page entrance", () => {
     applyPageTransition(); // next app start
     expect(document.documentElement.dataset.pageTransition).toBe("scale");
   });
+
+  it("the current page starts leaving on tap, away from the tab you're going to", async () => {
+    applyPageTransition("slide");
+    const calls: { el: Element; keyframes: Keyframe[] }[] = [];
+    (HTMLElement.prototype as unknown as { animate: unknown }).animate = function (this: Element, keyframes: Keyframe[]) {
+      calls.push({ el: this, keyframes });
+      return { cancel() {} };
+    };
+    try {
+      window.location.hash = "#/";
+      await act(async () => root.render(<App />));
+      for (let i = 0; i < 30 && !container.querySelector("main .page-enter h1"); i++) await settle();
+      const page = container.querySelector("main .page-enter");
+      const tab = container.querySelector<HTMLAnchorElement>('nav.app-nav--bottom a[href="#/settings"]')!;
+      // A real tap: pointer-down, pointer-up, then the click (which the tab ignores after handling pointer-up).
+      for (const type of ["pointerdown", "pointerup", "click"]) {
+        await act(async () => {
+          tab.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: 5, clientY: 5 }));
+        });
+      }
+      const call = calls.find((c) => c.el === page);
+      expect(call).toBeDefined();
+      expect(call!.keyframes[1]).toMatchObject({ opacity: 0.5, transform: "translate3d(-12px, 0, 0)" }); // going right → drifts left
+      await settle();
+      expect(window.location.hash).toBe("#/settings");
+    } finally {
+      delete (HTMLElement.prototype as unknown as { animate?: unknown }).animate;
+    }
+  });
 });
