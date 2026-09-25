@@ -1,4 +1,4 @@
-import { Suspense, useLayoutEffect, useMemo } from "react";
+import { Suspense, useLayoutEffect, useMemo, useState, type CSSProperties } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
 import { Sidebar } from "./Sidebar";
@@ -16,6 +16,7 @@ import { fromDateKey } from "../../lib/date-utils";
 import { budgetPeriod } from "../../lib/budgets";
 import { newId } from "../../lib/id";
 import { rowMotion } from "../transactions/rowMotion";
+import { navIndex } from "./tabTransition";
 import type { Transaction } from "../../types";
 import { t } from "../../i18n";
 
@@ -60,6 +61,19 @@ export function AppShell() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  // Which way the page moves in: from the right when going to a tab further
+  // right, from the left when going back (0 when not between two tabs).
+  // Worked out once per route change (state adjusted during render, the React
+  // pattern for "derive from the previous value"), so a re-render mid-animation
+  // can't change it.
+  const tabIndex = navIndex(pathname);
+  const [entrance, setEntrance] = useState({ pathname, tabIndex, dir: 0 });
+  if (entrance.pathname !== pathname) {
+    const from = entrance.tabIndex;
+    const dir = from < 0 || tabIndex < 0 || from === tabIndex ? 0 : tabIndex > from ? 1 : -1;
+    setEntrance({ pathname, tabIndex, dir });
+  }
+
   return (
     <div className="min-h-screen md:pl-60">
       <Sidebar onAdd={() => openAdd()} />
@@ -68,9 +82,10 @@ export function AppShell() {
             offline) must not stick around after navigating to another page. */}
         <ChunkErrorBoundary key={pathname}>
           <Suspense fallback={<PageFallback />}>
-            {/* A short fade-in when the page changes (remounts with the route key);
-                pure CSS, so taps are never blocked while it plays. */}
-            <div className="animate-page-in">
+            {/* The page's entrance when the route changes (remounts with the route
+                key). Pure CSS (index.css, variant by <html data-page-transition>),
+                so taps are never blocked while it plays. */}
+            <div className="page-enter" style={{ "--page-dir": entrance.dir } as CSSProperties}>
               <Outlet />
             </div>
           </Suspense>

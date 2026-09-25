@@ -238,6 +238,8 @@ export interface Dictionary {
   settings: {
     title: string;
     appearance: string;
+    /** Temporary prototype switch (1.6 step 7). */
+    pageTransition: { title: string; hint: string; options: Record<"slide" | "scale" | "fade", string> };
     theme: { light: string; dark: string; system: string };
     budgetsSection: string;
     categoriesSection: string;

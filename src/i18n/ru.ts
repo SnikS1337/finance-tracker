@@ -246,6 +246,11 @@ export const ru: Dictionary = {
   settings: {
     title: "Настройки",
     appearance: "Оформление",
+    pageTransition: {
+      title: "Переход между вкладками · прототип",
+      hint: "Выберите вариант и попереключайте вкладки. Временная настройка — уберём после выбора.",
+      options: { slide: "Сдвиг", scale: "Увеличение", fade: "Как сейчас" },
+    },
     theme: { light: "Светлая", dark: "Тёмная", system: "Системная" },
     budgetsSection: "Бюджеты",
     categoriesSection: "Категории",
