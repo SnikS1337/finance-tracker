@@ -1,17 +1,14 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAppData } from "../hooks/useAppData";
 import { SummaryCards } from "../components/dashboard/SummaryCards";
 import { QuickStats } from "../components/dashboard/QuickStats";
 import { BudgetOverview } from "../components/dashboard/BudgetOverview";
-import { SpendingChart, CategoryDonut } from "../components/dashboard/LazyCharts";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Button } from "../components/ui/Button";
 import { useTransactionSheetActions } from "../hooks/useTransactionSheet";
 import { useToday } from "../hooks/useToday";
 import { summarize } from "../lib/calculations";
 import { formatCurrency } from "../lib/currency";
-import { buildSpendingSeriesFromDaily } from "../lib/chart-data";
 import { fromDateKey, getPresetRange } from "../lib/date-utils";
 import { t } from "../i18n";
 
@@ -22,17 +19,13 @@ import { t } from "../i18n";
 export default function Dashboard() {
   const { transactions, categories, budgets } = useAppData();
   const { openAdd } = useTransactionSheetActions();
-  const navigate = useNavigate();
 
   // Recomputed when the day changes, so the dashboard rolls over to a new
   // month at midnight even if the app stays open.
   const today = useToday();
   const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
 
-  const { summary, series } = useMemo(() => {
-    const summary = summarize(transactions, range);
-    return { summary, series: buildSpendingSeriesFromDaily(summary.dailyExpenses) };
-  }, [transactions, range]);
+  const summary = useMemo(() => summarize(transactions, range), [transactions, range]);
 
   const spentToday = summary.dailyExpenses.get(today) ?? 0;
 
@@ -70,15 +63,7 @@ export default function Dashboard() {
         spendingDays={summary.spendingDays}
       />
 
-      <SpendingChart data={series} />
-
-      <CategoryDonut
-        title={t.categoryBreakdown.spendingByCategory}
-        totals={summary.expenseByCategory}
-        categories={categories}
-        emptyMessage={t.categoryBreakdown.expenseEmptyHint}
-        onSelectCategory={(categoryId) => navigate(`/transactions?category=${categoryId}`)}
-      />
+      {/* Charts by time and by category live in Analytics only. */}
     </div>
   );
 }

@@ -114,6 +114,9 @@ describe("PeriodSelector placement", () => {
     expect(text.includes("150")).toBe(true);
     // "Spent today" line (the seeded expense is dated today).
     expect(text.includes(t.dashboard.todaySpent(""))).toBe(true);
+    // Charts by time and by category live in Analytics only (1.6).
+    expect(text.includes(t.chart.spendingOverTime)).toBe(false);
+    expect(text.includes(t.categoryBreakdown.spendingByCategory)).toBe(false);
   });
 
   it("is still rendered in Analytics", async () => {
