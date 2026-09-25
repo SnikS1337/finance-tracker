@@ -8,7 +8,6 @@ import { ReportGenerator } from "../components/settings/ReportGenerator";
 import { DataSettings } from "../components/settings/DataSettings";
 import { AppearanceSettings } from "../components/settings/AppearanceSettings";
 import { AboutSettings } from "../components/settings/AboutSettings";
-import { PageTransitionSettings } from "../components/settings/PageTransitionSettings";
 import { Card } from "../components/ui/Card";
 import { t } from "../i18n";
 
@@ -30,7 +29,6 @@ export default function Settings() {
       <h1 className="text-xl font-semibold">{t.settings.title}</h1>
 
       <AppearanceSettings theme={settings.theme} onChange={(theme) => updateSettings({ theme })} />
-      <PageTransitionSettings />
 
       <section className="space-y-3">
         <h2 className="px-1 text-sm font-semibold text-neutral-500 dark:text-neutral-400">

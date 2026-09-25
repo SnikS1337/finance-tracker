@@ -4,11 +4,10 @@ import { createRoot, type Root } from "react-dom/client";
 import App from "../../App";
 import { DEFAULT_CATEGORIES } from "../../lib/seed";
 import { todayKey } from "../../lib/date-utils";
-import { applyPageTransition } from "../../lib/pageTransition";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-/** Page entrance prototype (1.6 step 7): direction follows the tab order; the variant is switchable. */
+/** Tab switch motion: the old page leaves on tap, the new one slides in from the side of the tab. */
 
 let container: HTMLDivElement;
 let root: Root;
@@ -44,7 +43,6 @@ afterEach(() => {
   });
   container.remove();
   window.location.hash = "";
-  delete document.documentElement.dataset.pageTransition;
   vi.unstubAllGlobals();
 });
 
@@ -83,25 +81,7 @@ describe("page entrance", () => {
     expect(dir()).toBe("1");
   });
 
-  it("the Settings switch changes the variant and remembers it", async () => {
-    applyPageTransition();
-    expect(document.documentElement.dataset.pageTransition).toBe("slide"); // default
-
-    window.location.hash = "#/settings";
-    await act(async () => root.render(<App />));
-    for (let i = 0; i < 30 && !container.querySelector('[role="radio"]'); i++) await settle();
-    const option = [...container.querySelectorAll<HTMLButtonElement>('[role="radio"]')].find((b) => b.textContent === "Увеличение")!;
-    await act(async () => option.click());
-    expect(document.documentElement.dataset.pageTransition).toBe("scale");
-    expect(option.getAttribute("aria-checked")).toBe("true");
-
-    delete document.documentElement.dataset.pageTransition;
-    applyPageTransition(); // next app start
-    expect(document.documentElement.dataset.pageTransition).toBe("scale");
-  });
-
   it("the current page starts leaving on tap, away from the tab you're going to", async () => {
-    applyPageTransition("slide");
     const calls: { el: Element; keyframes: Keyframe[] }[] = [];
     (HTMLElement.prototype as unknown as { animate: unknown }).animate = function (this: Element, keyframes: Keyframe[]) {
       calls.push({ el: this, keyframes });

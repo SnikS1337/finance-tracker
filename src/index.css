@@ -44,16 +44,16 @@
   .stagger > :nth-child(n + 4) { --stagger: 90ms; }
 }
 
-/* Page entrance on tab switch — prototype variants (1.6 step 7), chosen by
-   <html data-page-transition> (lib/pageTransition.ts). The old page starts
-   leaving on tap (playPageExit, JS) and the new one continues the movement:
-   it comes in from the side of the tab you went to (or grows in slightly),
-   from 40% opacity — never from blank. The curve starts gently so the
-   movement is actually seen instead of happening in the first frame.
-   Never blocks input. `backwards` fill leaves no transform on the page
-   afterwards (it would become the containing block for position: fixed).
-   Tuning: --page-shift (distance) and --page-enter-ms (duration); the exit
-   drift is in playPageExit. */
+/* Tab switch, part 2 (part 1 — the old page leaving on tap — is
+   playPageExit in lib/pageTransition.ts): the new page slides in from the
+   side of the tab you went to (--page-dir: 1 from the right, -1 from the
+   left, 0 on the first open), from 40% opacity — never from blank. The
+   curve starts gently so the movement is actually seen instead of happening
+   in the first frame. Never blocks input. `backwards` fill leaves no
+   transform on the page afterwards (it would become the containing block
+   for position: fixed). `main` clips horizontal overflow so the slide can't
+   widen the document (AppShell). Reduced motion: a short fade.
+   Tuning: --page-shift (distance), --page-enter-ms (duration). */
 :root {
   --page-shift: 20px;
   --page-enter-ms: 240ms;
@@ -64,29 +64,21 @@
 @keyframes page-slide-in {
   from { opacity: 0.4; transform: translate3d(calc(var(--page-dir, 0) * var(--page-shift)), 0, 0); }
 }
-@keyframes page-scale-in {
-  from { opacity: 0.4; transform: scale(0.97); }
-}
 .page-enter {
   animation: page-fade-in 120ms ease-out both;
 }
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-page-transition="slide"] .page-enter {
+  .page-enter {
     animation: page-slide-in var(--page-enter-ms) cubic-bezier(0.2, 0, 0, 1) backwards;
-  }
-  :root[data-page-transition="scale"] .page-enter {
-    transform-origin: 50% 0;
-    animation: page-scale-in var(--page-enter-ms) cubic-bezier(0.2, 0, 0, 1) backwards;
   }
   /* On a tab switch the page moves as one piece: its cards don't also rise in
      on their own (that doubled the motion and read as jitter). The first
      open of the app keeps the card entrance. */
-  :root[data-page-transition="slide"] .page-enter--switch .animate-card-in,
-  :root[data-page-transition="scale"] .page-enter--switch .animate-card-in {
+  .page-enter--switch .animate-card-in {
     animation: none;
   }
-  :root[data-page-transition="slide"] .nav-indicator,
-  :root[data-page-transition="scale"] .nav-indicator {
+  /* The bottom-nav indicator moves with the same feel as the page. */
+  .nav-indicator {
     transition-duration: 180ms;
     transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   }

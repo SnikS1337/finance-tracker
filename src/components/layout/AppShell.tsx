@@ -86,9 +86,9 @@ export function AppShell() {
             offline) must not stick around after navigating to another page. */}
         <ChunkErrorBoundary key={pathname}>
           <Suspense fallback={<PageFallback />}>
-            {/* The page's entrance when the route changes (remounts with the route
-                key). Pure CSS (index.css, variant by <html data-page-transition>),
-                so taps are never blocked while it plays. */}
+            {/* The page slides in when the route changes (remounts with the route
+                key); the old page already started leaving on tap (playPageExit).
+                Pure CSS (index.css), so taps are never blocked while it plays. */}
             <div className={entrance.switched ? "page-enter page-enter--switch" : "page-enter"} style={{ "--page-dir": entrance.dir } as CSSProperties}>
               <Outlet />
             </div>
