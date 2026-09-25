@@ -23,7 +23,8 @@ export default function Dashboard() {
   // Recomputed when the day changes, so the dashboard rolls over to a new
   // month at midnight even if the app stays open.
   const today = useToday();
-  const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
+  const now = useMemo(() => fromDateKey(today), [today]);
+  const range = useMemo(() => getPresetRange("thisMonth", undefined, undefined, now), [now]);
 
   const summary = useMemo(() => summarize(transactions, range), [transactions, range]);
 
@@ -54,7 +55,7 @@ export default function Dashboard() {
 
       <SummaryCards income={summary.income} expenses={summary.expenses} balance={summary.balance} />
 
-      <BudgetOverview budgets={budgets} categories={categories} transactions={transactions} range={range} />
+      <BudgetOverview budgets={budgets} categories={categories} transactions={transactions} now={now} />
 
       <QuickStats
         averagePerDay={summary.averagePerDay}

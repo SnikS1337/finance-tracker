@@ -2,6 +2,7 @@ import { Card } from "../ui/Card";
 import { ProgressBar } from "../ui/ProgressBar";
 import { formatCurrency } from "../../lib/currency";
 import type { BudgetProgress, Category } from "../../types";
+import { budgetPeriod } from "../../lib/budgets";
 import { t } from "../../i18n";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 export function BudgetCard({ progress, category, onEdit, place }: Props) {
   const { budget, spent, percentage, status } = progress;
+  const weekly = budgetPeriod(budget) === "week";
   return (
     <Card className="min-w-0 cursor-pointer" onClick={onEdit}>
       <div className="mb-2 flex min-w-0 items-center justify-between gap-3">
@@ -22,9 +24,14 @@ export function BudgetCard({ progress, category, onEdit, place }: Props) {
             <>
               <span className="shrink-0">{category.icon}</span>
               <span className="min-w-0 break-words">{category.name}</span>
+              {weekly && (
+                <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+                  {t.budgets.weekTag}
+                </span>
+              )}
             </>
           ) : (
-            <span className="min-w-0 break-words">{t.budgets.monthlyBudget}</span>
+            <span className="min-w-0 break-words">{weekly ? t.budgets.weeklyBudget : t.budgets.monthlyBudget}</span>
           )}
         </span>
         <span

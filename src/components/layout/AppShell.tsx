@@ -13,7 +13,8 @@ import { PageFallback } from "../ui/PageFallback";
 import { useToday } from "../../hooks/useToday";
 import { orderCategoriesByUsage } from "../../lib/categoryOrder";
 import { findBudgetCrossing } from "../../lib/budgetAlerts";
-import { fromDateKey, getPresetRange } from "../../lib/date-utils";
+import { fromDateKey } from "../../lib/date-utils";
+import { budgetPeriod } from "../../lib/budgets";
 import { newId } from "../../lib/id";
 import { rowMotion } from "../transactions/rowMotion";
 import type { Transaction } from "../../types";
@@ -35,7 +36,6 @@ export function AppShell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const today = useToday();
-  const monthRange = useMemo(() => getPresetRange("thisMonth", undefined, undefined, fromDateKey(today)), [today]);
 
   // Most recently used category first, then by frequency — the one you want is
   // usually in the first row.
@@ -43,9 +43,14 @@ export function AppShell() {
 
   /** " · Бюджет «Еда»: 85%" when this change pushed a budget past 80% or 100%. */
   function budgetNote(after: Transaction[]): string {
-    const crossing = findBudgetCrossing(budgets, categories, transactions, after, monthRange);
+    const crossing = findBudgetCrossing(budgets, categories, transactions, after, fromDateKey(today));
     if (!crossing) return "";
-    const label = crossing.category ? t.toasts.categoryBudgetLabel(crossing.category.name) : t.budgets.monthlyBudget;
+    const period = budgetPeriod(crossing.budget);
+    const label = crossing.category
+      ? t.toasts.categoryBudgetLabel(crossing.category.name, period)
+      : period === "week"
+        ? t.budgets.weeklyBudget
+        : t.budgets.monthlyBudget;
     return ` · ${t.toasts.budgetUsage(label, crossing.percent)}`;
   }
 

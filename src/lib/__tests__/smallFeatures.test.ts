@@ -24,7 +24,8 @@ const tx = (over: Partial<Transaction>): Transaction => ({
   ...over,
 });
 const budget = (over: Partial<Budget>): Budget => ({ id: "b", amount: 1000, createdAt: "", updatedAt: "", ...over });
-const september = { start: new Date(2026, 8, 1), end: new Date(2026, 8, 30, 23, 59) };
+/** "Now" for budget checks: Thursday 10 Sep 2026 (its week is Mon 7 – Sun 13 Sep). */
+const september = new Date(2026, 8, 10, 12);
 
 describe("orderCategoriesByUsage", () => {
   const categories = [cat("a"), cat("b"), cat("c"), cat("d")];
@@ -89,6 +90,30 @@ describe("findBudgetCrossing", () => {
     const severe = [budget({ id: "overall", amount: 800 }), budget({ id: "food", categoryId: "food", amount: 1000 })];
     // overall crosses 100%, food only 80% → overall wins.
     expect(findBudgetCrossing(severe, categories, [], added, september)?.budget.id).toBe("overall");
+  });
+});
+
+describe("weekly budgets", () => {
+  const categories = [cat("food", { name: "Еда" })];
+
+  it("count only the current week (Mon–Sun)", () => {
+    const b = [budget({ id: "w", categoryId: "food", period: "week", amount: 1000 })];
+    const lastWeek = [tx({ categoryId: "food", amount: 5000, date: "2026-09-06" })]; // Sunday before
+    expect(findBudgetCrossing(b, categories, lastWeek, [...lastWeek, tx({ categoryId: "food", amount: 500 })], september)).toBeNull();
+    expect(findBudgetCrossing(b, categories, [], [tx({ categoryId: "food", amount: 900, date: "2026-09-07" })], september)).toMatchObject({
+      threshold: 80,
+    });
+  });
+
+  it("a monthly and a weekly budget for the same scope live side by side", async () => {
+    const { budgetProgress, sameBudgetSlot } = await import("../budgets");
+    const month = budget({ id: "m", amount: 10_000 });
+    const week = budget({ id: "w", amount: 1_000, period: "week" });
+    expect(sameBudgetSlot(month, week)).toBe(false);
+    expect(sameBudgetSlot(month, { categoryId: undefined, period: "month" })).toBe(true);
+    const txs = [tx({ amount: 700, date: "2026-09-02" }), tx({ amount: 300, date: "2026-09-08" })];
+    expect(budgetProgress(month, txs, september).spent).toBe(1000);
+    expect(budgetProgress(week, txs, september).spent).toBe(300);
   });
 });
 

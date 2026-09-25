@@ -340,7 +340,8 @@ function isBudgetItem(b: unknown): b is Budget {
         isObject(b) &&
         isNonEmptyString(b.id) &&
         isValidAmount(b.amount) &&
-        (b.categoryId === undefined || isNonEmptyString(b.categoryId))
+        (b.categoryId === undefined || isNonEmptyString(b.categoryId)) &&
+        (b.period === undefined || b.period === "month" || b.period === "week")
   );
 }
 

@@ -139,7 +139,7 @@ export interface Dictionary {
     repeatedToday: string;
     /** Appended to the "added/updated" toast when a budget crosses 80% / 100%. */
     budgetUsage: (label: string, percent: number) => string;
-    categoryBudgetLabel: (categoryName: string) => string;
+    categoryBudgetLabel: (categoryName: string, period: "month" | "week") => string;
     transactionUpdated: string;
     expenseAdded: string;
     incomeAdded: string;
@@ -174,13 +174,21 @@ export interface Dictionary {
   };
   budgets: {
     monthlyBudget: string;
+    weeklyBudget: string;
     categoryBudgetTitle: (name: string) => string;
     setMonthlyBudget: string;
+    setWeeklyBudget: string;
+    periodLabel: string;
+    periodMonth: string;
+    periodWeek: string;
+    /** Shown next to a category name on a weekly budget card. */
+    weekTag: string;
+    periodTaken: string;
     addCategoryBudget: string;
     spentOf: string;
     spent: string;
     of: string;
-    amountLabel: string;
+    amountLabel: (period: "month" | "week") => string;
     saveBudget: string;
     removeCta: string;
   };
