@@ -8,7 +8,7 @@ import { cn } from "../../lib/cn";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { AXIS_LOCK_PX, DELETE_THRESHOLD, swipeOffsetForDrag } from "./swipePhysics";
 import { rowMotion } from "./rowMotion";
-import { canAnimate, EASE_CALM_IN, EASE_CALM_OUT, prefersReducedMotion, vibrate } from "../../lib/motion";
+import { canAnimate, EASE_CALM_OUT, prefersReducedMotion, vibrate } from "../../lib/motion";
 import { t, dateLocale } from "../../i18n";
 
 function groupLabel(dateKey: string): string {
@@ -25,7 +25,7 @@ function groupLabel(dateKey: string): string {
 const RETURN_MS = 300;
 const SETTLE_MS = 240;
 /** A deleted row folds away before it leaves the list… */
-const COLLAPSE_MS = 220;
+const COLLAPSE_MS = 260;
 /** …and unfolds back into place on "Отменить". */
 const EXPAND_MS = 280;
 const HIGHLIGHT_MS = 1400;
@@ -49,11 +49,15 @@ function collapseElement(el: HTMLElement | null, done: () => void): Animation | 
   const marginTop = getComputedStyle(el).marginTop;
   el.style.overflow = "hidden";
   const anim = el.animate(
+    // Fade out first, then close the gap: the row (and the red delete zone on
+    // its edge) is gone before its height shrinks, so no pink strip lingers
+    // between the neighbours while they slide together.
     [
-      { height: `${height}px`, marginTop, opacity: 1 },
-      { height: "0px", marginTop: "0px", opacity: 0 },
+      { height: `${height}px`, marginTop, opacity: 1, offset: 0 },
+      { height: `${height}px`, marginTop, opacity: 0, offset: 0.3 },
+      { height: "0px", marginTop: "0px", opacity: 0, offset: 1 },
     ],
-    { duration: COLLAPSE_MS, easing: EASE_CALM_IN, fill: "forwards" }
+    { duration: COLLAPSE_MS, easing: "cubic-bezier(0.4, 0, 0.2, 1)", fill: "forwards" }
   );
   anim.onfinish = done;
   return anim;

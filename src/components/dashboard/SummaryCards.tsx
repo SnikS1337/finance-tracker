@@ -17,7 +17,10 @@ function RubEquivalent({ amount, rate }: { amount: number; rate: number }) {
   return (
     <p className="mt-0.5 flex items-center gap-1 text-xs text-neutral-400 dark:text-neutral-500">
       <ArrowRight size={11} strokeWidth={2} aria-hidden="true" className="shrink-0" />
-      <span className="truncate">{formatRubEquivalent(amount, rate)}</span>
+      {/* Flows together with the amount above it instead of jumping. */}
+      <span className="truncate">
+        <AnimatedNumber value={amount} format={(v) => formatRubEquivalent(v, rate)} />
+      </span>
     </p>
   );
 }

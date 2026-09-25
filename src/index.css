@@ -35,66 +35,54 @@
 
 /* ---------- Motion ---------- */
 
-/* Dashboard sections appear one after another: each direct child sets a delay
-   that its cards (Card uses var(--stagger)) inherit. */
+/* Dashboard sections appear one after another — only the first time the app
+   opens (see Dashboard.tsx): each direct child sets a delay that its cards
+   (Card uses var(--stagger)) inherit. */
 @media (prefers-reduced-motion: no-preference) {
-  .stagger > :nth-child(2) { --stagger: 50ms; }
-  .stagger > :nth-child(3) { --stagger: 100ms; }
-  .stagger > :nth-child(4) { --stagger: 150ms; }
-  .stagger > :nth-child(5) { --stagger: 200ms; }
-  .stagger > :nth-child(n + 6) { --stagger: 250ms; }
+  .stagger > :nth-child(2) { --stagger: 30ms; }
+  .stagger > :nth-child(3) { --stagger: 60ms; }
+  .stagger > :nth-child(n + 4) { --stagger: 90ms; }
 }
 
-/* Tab switches (View Transitions API, see tabTransition.ts). The old page
-   fades out first, then the new one fades in with a small slide — they never
-   overlap, so there's no double image. Only the page content moves; the rest of the screen switches instantly and the nav
-   indicator glides on its own. Browsers without the API ignore all of this. */
-.page-transition { view-transition-name: page; }
-/* The nav bars are captured separately so they stay above the sliding page. */
-.app-nav--bottom { view-transition-name: nav-bar-bottom; }
-.app-nav--side { view-transition-name: nav-bar-side; }
-.nav-indicator--bottom { view-transition-name: nav-indicator-bottom; }
-.nav-indicator--side { view-transition-name: nav-indicator-side; }
-/* During the transition the indicator is moved by the transition itself. */
-html[data-nav-direction] .nav-indicator { transition: none; }
-
-::view-transition-old(root),
-::view-transition-new(root),
-::view-transition-group(page),
-::view-transition-group(nav-bar-bottom),
-::view-transition-group(nav-bar-side),
-::view-transition-old(nav-bar-bottom),
-::view-transition-new(nav-bar-bottom),
-::view-transition-old(nav-bar-side),
-::view-transition-new(nav-bar-side) {
-  animation: none;
+/* Tab switch, part 2 (part 1 — the old page leaving on tap — is
+   playPageExit in lib/pageTransition.ts): the new page slides in from the
+   side of the tab you went to (--page-dir: 1 from the right, -1 from the
+   left, 0 on the first open), from 40% opacity — never from blank. The
+   curve starts gently so the movement is actually seen instead of happening
+   in the first frame. Never blocks input. `backwards` fill leaves no
+   transform on the page afterwards (it would become the containing block
+   for position: fixed). `main` clips horizontal overflow so the slide can't
+   widen the document (AppShell). Reduced motion: a short fade.
+   Tuning: --page-shift (distance), --page-enter-ms (duration). */
+:root {
+  --page-shift: 20px;
+  --page-enter-ms: 240ms;
 }
-/* The old nav snapshot would show under the new one; only the new one is needed. */
-::view-transition-old(nav-bar-bottom),
-::view-transition-old(nav-bar-side) {
-  display: none;
+@keyframes page-fade-in {
+  from { opacity: 0.35; }
 }
-::view-transition-group(nav-indicator-bottom),
-::view-transition-group(nav-indicator-side) {
-  animation-duration: 280ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+@keyframes page-slide-in {
+  from { opacity: 0.4; transform: translate3d(calc(var(--page-dir, 0) * var(--page-shift)), 0, 0); }
 }
-::view-transition-old(page) {
-  animation: page-out 100ms cubic-bezier(0.7, 0, 0.84, 0) both;
+.page-enter {
+  animation: page-fade-in 120ms ease-out both;
 }
-::view-transition-new(page) {
-  animation: page-in 240ms cubic-bezier(0.16, 1, 0.3, 1) 90ms both;
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation: page-slide-in var(--page-enter-ms) cubic-bezier(0.2, 0, 0, 1) backwards;
+  }
+  /* On a tab switch the page moves as one piece: its cards don't also rise in
+     on their own (that doubled the motion and read as jitter). The first
+     open of the app keeps the card entrance. */
+  .page-enter--switch .animate-card-in {
+    animation: none;
+  }
+  /* The bottom-nav indicator moves with the same feel as the page. */
+  .nav-indicator {
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 }
-html[data-nav-direction="back"]::view-transition-old(page) {
-  animation-name: page-out-back;
-}
-html[data-nav-direction="back"]::view-transition-new(page) {
-  animation-name: page-in-back;
-}
-@keyframes page-out { to { transform: translateX(-8px); opacity: 0; } }
-@keyframes page-in { from { transform: translateX(16px); opacity: 0; } }
-@keyframes page-out-back { to { transform: translateX(8px); opacity: 0; } }
-@keyframes page-in-back { from { transform: translateX(-16px); opacity: 0; } }
 
 /* Spending chart: bars grow up from the axis the first time it's shown. */
 @keyframes bars-in {

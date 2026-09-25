@@ -22,9 +22,9 @@ type Phase = "empty" | "filling" | "idle";
 const FILL_FALLBACK_MS = 1_000;
 
 /**
- * - First show in this launch (with an `introKey`): fills 0 → value (~600 ms).
+ * - First show in this launch (with an `introKey`): fills 0 → value (~400 ms).
  * - Afterwards / on return to the screen: drawn in place.
- * - Value changes (an operation added or deleted): glides old → new (~400 ms),
+ * - Value changes (an operation added or deleted): glides old → new (~250 ms),
  *   and the colour eases across the 80% / 100% thresholds.
  * - Reduced motion: no animation (plus the global reduced-motion CSS).
  *
@@ -70,9 +70,9 @@ export function ProgressBar({ percentage, status, introKey }: { percentage: numb
     >
       <div
         className={cn(
-          "h-full w-full origin-left rounded-full transition-[transform,background-color] ease-calm-out",
+          "h-full w-full origin-left rounded-full transition-[transform,background-color] ease-out",
           // The first fill waits for its card's staggered entrance (Dashboard).
-          phase === "filling" ? "duration-[600ms] [transition-delay:var(--stagger,0ms)]" : "duration-[400ms]",
+          phase === "filling" ? "duration-[400ms] [transition-delay:var(--stagger,0ms)]" : "duration-[250ms]",
           statusColor[status]
         )}
         style={{ transform: `scaleX(${scale})` }}

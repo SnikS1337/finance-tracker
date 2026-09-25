@@ -31,14 +31,16 @@ describe("summarize — a period that is still running", () => {
     expect(s.averagePerDay).not.toBe(10_140_000 / 30);
   });
 
-  it("computes the median over elapsed days only", () => {
-    // 13 of 24 elapsed days have spending → the median is a real spend, not 0.
-    const transactions = Array.from({ length: 13 }, (_, i) =>
-      tx({ date: `2026-09-${String(i + 1).padStart(2, "0")}`, amount: 100 })
-    );
+  it("computes the median over spending days, however many quiet days there are", () => {
+    const transactions = [
+      tx({ date: "2026-09-02", amount: 100 }),
+      tx({ date: "2026-09-10", amount: 300 }),
+      tx({ date: "2026-09-10", amount: 200 }), // same day: 500
+      tx({ date: "2026-09-20", amount: 50 }),
+    ];
+    // Spending days: 100, 500, 50 → median 100 (21 of 24 days had no expenses).
     expect(summarize(transactions, september, sep24).medianPerDay).toBe(100);
-    // Over the full 30-day month, 17 quiet days would drag it to 0.
-    expect(summarize(transactions, september, afterSeptember).medianPerDay).toBe(0);
+    expect(summarize(transactions, september, afterSeptember).medianPerDay).toBe(100);
   });
 
   it("keeps full-period behaviour once the period is over", () => {

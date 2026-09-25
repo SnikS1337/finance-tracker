@@ -1,7 +1,7 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { Plus, Wallet } from "lucide-react";
 import { NAV_ITEMS } from "./navItems";
-import { navIndex, useTabClick } from "./tabTransition";
+import { useShownTab, useTabHandlers } from "./tabTransition";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 
@@ -9,9 +9,8 @@ import { t } from "../../i18n";
 const ROW_STEP_REM = 2.5 + 0.25;
 
 export function Sidebar({ onAdd }: { onAdd: () => void }) {
-  const { pathname } = useLocation();
-  const active = navIndex(pathname);
-  const onTabClick = useTabClick();
+  const active = useShownTab();
+  const handlers = useTabHandlers();
   return (
     <aside className="app-nav--side fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-neutral-200 bg-white px-4 py-6 dark:border-neutral-800 dark:bg-surface-dark md:flex">
       <div className="mb-8 flex items-center gap-2 px-2">
@@ -29,24 +28,22 @@ export function Sidebar({ onAdd }: { onAdd: () => void }) {
         {active >= 0 && (
           <div
             aria-hidden
-            className="nav-indicator nav-indicator--side pointer-events-none absolute inset-x-0 top-0 h-10 rounded-lg bg-neutral-100 transition-transform duration-280 ease-calm-out dark:bg-neutral-800"
+            className="nav-indicator pointer-events-none absolute inset-x-0 top-0 h-10 rounded-lg bg-neutral-100 transition-transform duration-150 ease-out dark:bg-neutral-800"
             style={{ transform: `translateY(${active * ROW_STEP_REM}rem)` }}
           />
         )}
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+        {NAV_ITEMS.map(({ to, label, icon: Icon }, i) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
-            onClick={onTabClick(to)}
-            className={({ isActive }) =>
-              cn(
-                "relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors",
-                isActive
-                  ? "text-neutral-900 dark:text-white"
-                  : "text-neutral-500 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
-              )
-            }
+            {...handlers(to)}
+            className={cn(
+              "relative flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium",
+              active === i
+                ? "text-neutral-900 dark:text-white"
+                : "text-neutral-500 hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800/60"
+            )}
           >
             <Icon size={18} />
             {label}

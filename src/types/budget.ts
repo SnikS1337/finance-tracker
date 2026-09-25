@@ -1,17 +1,22 @@
+/** How often a budget resets. Weeks run Monday–Sunday. */
+export type BudgetPeriod = "month" | "week";
+
 /**
- * Budgets are monthly by definition (the only period that matters for a
- * recurring "how much can I spend this month" question). `categoryId` is
- * undefined for the overall monthly budget.
+ * A spending limit for the current month or week, overall or for one
+ * category. `categoryId` is undefined for an overall budget; `period` is
+ * undefined in budgets saved before weekly budgets existed (= "month").
+ * At most one budget per (category, period).
  */
 export interface Budget {
   id: string;
   categoryId?: string;
+  period?: BudgetPeriod;
   amount: number;
   createdAt: string;
   updatedAt: string;
 }
 
-export type NewBudgetInput = Pick<Budget, "categoryId" | "amount">;
+export type NewBudgetInput = Pick<Budget, "categoryId" | "amount"> & { period: BudgetPeriod };
 
 export type BudgetStatus = "normal" | "approaching" | "exceeded";
 

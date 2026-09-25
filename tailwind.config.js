@@ -37,14 +37,17 @@ export default {
         280: "280ms",
       },
       keyframes: {
-        // Bottom sheet (mobile): rises gently from just below its resting position.
+        // Bottom sheet (mobile): slides up from the bottom edge — where the "+"
+        // that opens it is — fully opaque, like a native sheet. The earlier
+        // short rise with a fade showed the page through the half-transparent
+        // form (a "double exposure") for most of the animation.
         "sheet-in-mobile": {
-          "0%": { transform: "translateY(28px)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
+          "0%": { transform: "translateY(100%)" },
+          "100%": { transform: "translateY(0)" },
         },
         "sheet-out-mobile": {
-          "0%": { transform: "translateY(0)", opacity: "1" },
-          "100%": { transform: "translateY(20px)", opacity: "0" },
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(100%)" },
         },
         // Centered dialog (desktop): stays perfectly centered while it scales,
         // so the translate(-50%,-50%) centering and the scale share one keyframe.
@@ -83,13 +86,18 @@ export default {
         },
         // Plays once on mount only (a CSS `animation`, not a `transition`), so it
         // never replays on ordinary re-renders — just when a section first appears.
+        // Page change: a quick fade from almost-there, no movement.
+        "page-in": {
+          "0%": { opacity: "0.35" },
+          "100%": { opacity: "1" },
+        },
         "card-in": {
-          "0%": { transform: "translateY(6px)", opacity: "0" },
+          "0%": { transform: "translateY(4px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
         },
       },
       animation: {
-        "sheet-in-mobile": "sheet-in-mobile 0.36s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "sheet-in-mobile": "sheet-in-mobile 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both",
         "sheet-out-mobile": "sheet-out-mobile 0.22s cubic-bezier(0.7, 0, 0.84, 0) both",
         "sheet-in-desktop": "sheet-in-desktop 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
         "sheet-out-desktop": "sheet-out-desktop 0.2s cubic-bezier(0.7, 0, 0.84, 0) both",
@@ -99,7 +107,9 @@ export default {
         "toast-out": "toast-out 0.22s cubic-bezier(0.7, 0, 0.84, 0) both",
         "popover-in": "popover-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both",
         "popover-out": "popover-out 0.12s cubic-bezier(0.7, 0, 0.84, 0) both",
-        "card-in": "card-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both",
+        // Short and without a long slow tail (1.6: the longer version felt "jelly").
+        "card-in": "card-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "page-in": "page-in 0.12s ease-out both",
         // Loading placeholders: invisible for the first 250ms, so fast loads never flash a skeleton.
         "fade-in-delayed": "fade-in 0.3s ease-out 0.25s both",
       },

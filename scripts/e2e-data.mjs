@@ -10,7 +10,7 @@ const BASE = process.env.BASE || 'http://127.0.0.1:4174/finance-tracker/';
 const results = []; const ok = (n, c, x = '') => results.push(`${c ? 'PASS' : 'FAIL'}  ${n}${x ? '  — ' + x : ''}`);
 const today = new Date().toISOString().slice(0, 10);
 const tx = (id, amount, extra = {}) => ({ id, type: 'expense', amount, categoryId: 'exp-food', date: today, createdAt: new Date().toISOString(), updatedAt: '', ...extra });
-function seedScript(data) {
+function seedScript() {
   return ([d]) => { if (localStorage.getItem('seeded')) return; localStorage.setItem('pft:schemaVersion','1'); localStorage.setItem('pft:settings', JSON.stringify({theme:'light',onboarded:true,isDemoData:false})); for (const [k,v] of Object.entries(d)) localStorage.setItem(k, JSON.stringify(v)); localStorage.setItem('seeded','1'); };
 }
 (async () => {
@@ -47,7 +47,7 @@ function seedScript(data) {
     ok('вкладки: добавление почти одновременно в двух вкладках — обе сохранены', stored.includes(111) && stored.includes(222), JSON.stringify(stored));
     // budget in A → B dashboard
     await B.goto(BASE + '#/'); await B.locator('main').waitFor();
-    await A.goto(BASE + '#/settings'); await A.locator('main').waitFor(); await A.getByRole('button', { name: /месячный бюджет/i }).first().click(); await A.locator('[role="dialog"] input').first().fill('5000000'); await A.getByRole('button', { name: 'Сохранить бюджет' }).click(); await B.waitForTimeout(400);
+    await A.goto(BASE + '#/settings'); await A.locator('main').waitFor(); await A.getByRole('button', { name: '+ Бюджет на месяц' }).first().click(); await A.locator('[role="dialog"] input').first().fill('5000000'); await A.getByRole('button', { name: 'Сохранить бюджет' }).click(); await B.waitForTimeout(400);
     ok('вкладки: бюджет из A виден на Обзоре в B', (await body(B)).includes('Бюджет на месяц'));
     await A.goto(BASE + '#/'); await A.locator('main').waitFor();
     // recurring from A shows in B settings, catch-up not duplicated across tabs

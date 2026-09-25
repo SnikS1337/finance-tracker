@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import type { Budget, NewBudgetInput } from "../types";
 import * as storage from "../lib/storage";
 import { newId } from "../lib/id";
+import { sameBudgetSlot } from "../lib/budgets";
 
 export function useBudgets() {
   const [budgets, setBudgets] = useState<Budget[]>(() => storage.getBudgets());
@@ -14,9 +15,9 @@ export function useBudgets() {
       if (existingId) {
         storage.updateBudget(existingId, input);
       } else {
-        // One budget per scope (overall, or per category) — replace rather than duplicate.
+        // One budget per scope (overall or a category) and period — replace rather than duplicate.
         const all = storage.getBudgets();
-        const dupe = all.find((b) => b.categoryId === input.categoryId);
+        const dupe = all.find((b) => sameBudgetSlot(b, input));
         if (dupe) {
           storage.updateBudget(dupe.id, input);
         } else {

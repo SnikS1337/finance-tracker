@@ -1,3 +1,4 @@
+import type { PeriodPreset } from "../lib/date-utils";
 /**
  * Shape of a single locale's strings. Adding a new language later means
  * creating another file that implements this interface (e.g. `en.ts`) and
@@ -68,6 +69,15 @@ export interface Dictionary {
     expenses: string;
     balance: string;
   };
+  monthlyReview: {
+    /** "Итоги сентября" — month 0–11. */
+    title: (month: number) => string;
+    hide: string;
+    topCategory: (name: string, percent: number) => string;
+    /** Expenses vs the month before; `month` 0–11. */
+    change: (percent: number, month: number) => string;
+    open: string;
+  };
   quickStats: {
     averagePerDay: string;
     medianPerDay: string;
@@ -102,6 +112,12 @@ export interface Dictionary {
     emptyDescriptionNoMatch: string;
     deleteAction: string;
     showMore: (remaining: number) => string;
+    /** The selected period as it reads after "за": "этот месяц", "выбранный период". */
+    periodName: (preset: PeriodPreset) => string;
+    foundAllTime: (count: number) => string;
+    foundInPeriod: (count: number, periodName: string) => string;
+    onlyInPeriod: (periodName: string) => string;
+    searchAllTime: string;
     recurringBadge: string;
     deleteConfirmTitle: string;
     deleteConfirmDescription: string;
@@ -139,7 +155,7 @@ export interface Dictionary {
     repeatedToday: string;
     /** Appended to the "added/updated" toast when a budget crosses 80% / 100%. */
     budgetUsage: (label: string, percent: number) => string;
-    categoryBudgetLabel: (categoryName: string) => string;
+    categoryBudgetLabel: (categoryName: string, period: "month" | "week") => string;
     transactionUpdated: string;
     expenseAdded: string;
     incomeAdded: string;
@@ -174,13 +190,21 @@ export interface Dictionary {
   };
   budgets: {
     monthlyBudget: string;
+    weeklyBudget: string;
     categoryBudgetTitle: (name: string) => string;
     setMonthlyBudget: string;
+    setWeeklyBudget: string;
+    periodLabel: string;
+    periodMonth: string;
+    periodWeek: string;
+    /** Shown next to a category name on a weekly budget card. */
+    weekTag: string;
+    periodTaken: string;
     addCategoryBudget: string;
     spentOf: string;
     spent: string;
     of: string;
-    amountLabel: string;
+    amountLabel: (period: "month" | "week") => string;
     saveBudget: string;
     removeCta: string;
   };

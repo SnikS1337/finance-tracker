@@ -1,5 +1,8 @@
 import type { Dictionary } from "./types";
 
+const MONTHS_GENITIVE = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+const MONTHS_PREPOSITIONAL = ["январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе", "сентябре", "октябре", "ноябре", "декабре"];
+
 export const ru: Dictionary = {
   app: {
     loadingSection: "Загружаем раздел…",
@@ -63,6 +66,17 @@ export const ru: Dictionary = {
     expenses: "Расходы",
     balance: "Баланс",
   },
+  monthlyReview: {
+    title: (month) => `Итоги ${MONTHS_GENITIVE[month]}`,
+    hide: "Скрыть до следующего месяца",
+    topCategory: (name, percent) => `Больше всего ушло на ${name}: ${percent}% расходов`,
+    change: (percent, month) => {
+      const inMonth = MONTHS_PREPOSITIONAL[month];
+      if (Math.abs(percent) < 1) return `Расходы почти как в ${inMonth}`;
+      return `Расходы на ${Math.abs(percent)}% ${percent < 0 ? "меньше" : "больше"}, чем в ${inMonth}`;
+    },
+    open: "Подробнее в Аналитике",
+  },
   quickStats: {
     averagePerDay: "В среднем в день",
     medianPerDay: "Медиана в день",
@@ -97,6 +111,22 @@ export const ru: Dictionary = {
     emptyDescriptionNoMatch: "Попробуйте другой период, фильтр или запрос.",
     deleteAction: "Удалить операцию",
     showMore: (remaining) => `Показать ещё (осталось ${remaining})`,
+    periodName: (preset) =>
+      ({
+        today: "сегодня",
+        yesterday: "вчера",
+        "7d": "7 дней",
+        thisWeek: "эту неделю",
+        lastWeek: "прошлую неделю",
+        thisMonth: "этот месяц",
+        lastMonth: "прошлый месяц",
+        thisYear: "этот год",
+        custom: "выбранный период",
+      })[preset],
+    foundAllTime: (count) => `Найдено: ${count} за всё время`,
+    foundInPeriod: (count, periodName) => `Найдено: ${count} за ${periodName}`,
+    onlyInPeriod: (periodName) => `Только за ${periodName}`,
+    searchAllTime: "Искать за всё время",
     recurringBadge: "Регулярная операция",
     deleteConfirmTitle: "Удалить операцию?",
     deleteConfirmDescription: "Сразу после удаления её можно будет вернуть кнопкой «Отменить».",
@@ -132,7 +162,7 @@ export const ru: Dictionary = {
   toasts: {
     repeatedToday: "Операция добавлена на сегодня",
     budgetUsage: (label, percent) => `${label}: ${percent}%`,
-    categoryBudgetLabel: (name) => `Бюджет «${name}»`,
+    categoryBudgetLabel: (name, period) => `Бюджет «${name}»${period === "week" ? " на неделю" : ""}`,
     transactionUpdated: "Операция обновлена",
     expenseAdded: "Расход добавлен",
     incomeAdded: "Доход добавлен",
@@ -167,13 +197,20 @@ export const ru: Dictionary = {
   },
   budgets: {
     monthlyBudget: "Бюджет на месяц",
+    weeklyBudget: "Бюджет на неделю",
     categoryBudgetTitle: (name) => `Бюджет: ${name}`,
-    setMonthlyBudget: "Задать месячный бюджет",
+    setMonthlyBudget: "Бюджет на месяц",
+    setWeeklyBudget: "Бюджет на неделю",
+    periodLabel: "Период",
+    periodMonth: "Месяц",
+    periodWeek: "Неделя",
+    weekTag: "неделя",
+    periodTaken: "Такой бюджет уже есть — измените его в списке",
     addCategoryBudget: "+ Добавить бюджет по категории",
     spentOf: "потрачено",
     spent: "Потрачено",
     of: "из",
-    amountLabel: "Сумма на месяц",
+    amountLabel: (period) => (period === "week" ? "Сумма на неделю (пн–вс)" : "Сумма на месяц"),
     saveBudget: "Сохранить бюджет",
     removeCta: "Удалить",
   },
@@ -220,7 +257,7 @@ export const ru: Dictionary = {
     about: "О приложении",
     aboutBody:
       "Финансовый учёт — быстрый, приватный офлайн-трекер расходов и бюджета. Все данные остаются на этом устройстве, пока вы сами их не экспортируете.",
-    version: "Версия 1.5.1",
+    version: "Версия 1.6.0",
   },
   update: {
     available: "Доступна новая версия",
