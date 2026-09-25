@@ -110,4 +110,15 @@ describe("search over all time", () => {
     await type("подарок");
     expect(text()).toContain("Найдено: 1 за всё время");
   });
+
+  it("picking a period during an all-time search narrows the search to it", async () => {
+    await renderTransactions();
+    await type("подарок");
+    expect(text()).toContain("Найдено: 1 за всё время");
+    const thisYear = [...container.querySelectorAll<HTMLElement>("main button, main [role=radio]")].find((b) => b.textContent === "Этот год")!;
+    await act(async () => thisYear.click());
+    await settle();
+    expect(text()).toContain("Найдено: 0 за этот год");
+    expect(text()).toContain("Искать за всё время");
+  });
 });

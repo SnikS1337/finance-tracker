@@ -83,13 +83,23 @@ export default function Transactions() {
         <h1 className="text-xl font-semibold">{t.transactionsPage.title}</h1>
       </div>
 
-      <PeriodSelector
-        value={period.preset}
-        onChange={period.setPreset}
-        customStart={period.customStart}
-        customEnd={period.customEnd}
-        onCustomChange={period.setCustomRange}
-      />
+      {/* While a search looks through all time the period doesn't apply: it's
+          dimmed, and picking one narrows the search to it. */}
+      <div className={ignorePeriod ? "opacity-50 transition-opacity" : "transition-opacity"}>
+        <PeriodSelector
+          value={period.preset}
+          onChange={(preset) => {
+            period.setPreset(preset);
+            if (ignorePeriod) setSearchAllTime(false);
+          }}
+          customStart={period.customStart}
+          customEnd={period.customEnd}
+          onCustomChange={(start, end) => {
+            period.setCustomRange(start, end);
+            if (ignorePeriod) setSearchAllTime(false);
+          }}
+        />
+      </div>
 
       <div className="flex items-center gap-2 rounded-xl border border-neutral-200 px-3 py-2 dark:border-neutral-800">
         <Search size={16} className="shrink-0 text-neutral-400" />
